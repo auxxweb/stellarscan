@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Eye, RotateCcw } from 'lucide-react'
+import { Eye, Filter, RotateCcw } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
+import { PageFiltersBar } from '../components/ui/PageFiltersBar'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { useAppStore } from '../store/useAppStore'
@@ -12,7 +13,7 @@ import { cn } from '../utils/cn'
 import { ReturnProductModal } from '../components/workflows/ReturnProductModal'
 import { RentalViewModal } from '../components/workflows/RentalViewModal'
 import type { Product, Rental } from '../types'
-import { normalizeEntityId } from '../utils/scannerResolve'
+import { normalizeEntityId, resolveProductNameLabel } from '../utils/scannerResolve'
 
 export function RentalsPage() {
   const rentals = useAppStore((s) => s.rentals)
@@ -21,12 +22,48 @@ export function RentalsPage() {
 
   const [returnTarget, setReturnTarget] = useState<{ product: Product; rental: Rental } | null>(null)
   const [viewRental, setViewRental] = useState<Rental | null>(null)
+  const [query, setQuery] = useState('')
+  const [scope, setScope] = useState<'all' | 'active' | 'closed'>('all')
 
   const { active, closed } = useMemo(() => {
     const a = rentals.filter((r) => r.status === 'active')
     const c = rentals.filter((r) => r.status === 'closed')
     return { active: a, closed: c }
   }, [rentals])
+
+  const filteredActive = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return active.filter((r) => {
+      if (!q) return true
+      const pname = resolveProductNameLabel(r.productId, r.productName, products)
+      const hay = `${pname} ${r.customerName} ${r.phone} ${r.productId} ${r.id}`.toLowerCase()
+      return hay.includes(q)
+    })
+  }, [active, query, products])
+
+  const filteredClosed = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return closed.filter((r) => {
+      if (!q) return true
+      const pname = resolveProductNameLabel(r.productId, r.productName, products)
+      const hay = `${pname} ${r.customerName} ${r.phone} ${r.productId} ${r.id}`.toLowerCase()
+      return hay.includes(q)
+    })
+  }, [closed, query, products])
+
+  /** Sheet order is typically oldest-first; show newest rows first. */
+  const displayedActive = useMemo(() => [...filteredActive].reverse(), [filteredActive])
+  const displayedClosed = useMemo(() => [...filteredClosed].reverse(), [filteredClosed])
+
+  const showActiveSection = scope !== 'closed'
+  const showClosedSection = scope !== 'active'
+  const hasRentals = rentals.length > 0
+  const noMatches =
+    hasRentals &&
+    query.trim() !== '' &&
+    filteredActive.length === 0 &&
+    filteredClosed.length === 0 &&
+    scope === 'all'
 
   const openCloseRental = (r: Rental) => {
     const product = products.find((p) => normalizeEntityId(p.id) === normalizeEntityId(r.productId))
@@ -43,15 +80,47 @@ export function RentalsPage() {
         <div className="text-xs font-semibold text-sky-700">Contracts</div>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Rentals</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Active and closed rows in the same order as your Rentals sheet.
+          Latest rentals first (reverse of sheet top-to-bottom order).
         </p>
       </div>
 
+      <PageFiltersBar
+        query={query}
+        onQueryChange={setQuery}
+        searchPlaceholder="Search product, customer, phone…"
+        filters={
+          <>
+            <Filter className="size-4 shrink-0 text-slate-500 max-sm:hidden" aria-hidden />
+            <select
+              className="w-full min-w-[10rem] rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 sm:w-auto"
+              value={scope}
+              onChange={(e) => setScope(e.target.value as typeof scope)}
+            >
+              <option value="all">All rentals</option>
+              <option value="active">Active only</option>
+              <option value="closed">Closed only</option>
+            </select>
+          </>
+        }
+      />
+
+      {noMatches ? (
+        <GlassCard>
+          <div className="text-sm font-semibold text-slate-900">No matches</div>
+          <p className="mt-1 text-sm text-slate-600">Try a different search or clear the search box.</p>
+        </GlassCard>
+      ) : (
+        <>
+      {showActiveSection ? (
       <GlassCard>
         <div className="text-sm font-semibold text-slate-900">Active rentals</div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {active.length === 0 ? <div className="text-sm text-slate-600">No active rentals.</div> : null}
-          {active.map((r, idx) => (
+          {filteredActive.length === 0 ? (
+            <div className="text-sm text-slate-600">
+              {!hasRentals ? 'No active rentals.' : query.trim() ? 'No matching active rentals.' : 'No active rentals.'}
+            </div>
+          ) : null}
+          {displayedActive.map((r, idx) => (
             <motion.div
               key={r.id}
               initial={{ opacity: 1, y: 0 }}
@@ -61,7 +130,9 @@ export function RentalsPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate font-semibold text-slate-900">{r.productName}</div>
+                  <div className="truncate font-semibold text-slate-900">
+                    {resolveProductNameLabel(r.productId, r.productName, products)}
+                  </div>
                   <div className="mt-1 text-sm text-slate-700">{r.customerName}</div>
                   <div className="mt-1 text-xs text-slate-600">{r.phone}</div>
                 </div>
@@ -100,11 +171,14 @@ export function RentalsPage() {
           ))}
         </div>
       </GlassCard>
+      ) : null}
 
+      {showClosedSection ? (
       <GlassCard>
         <div className="text-sm font-semibold text-slate-900">Closed rentals</div>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-          <table className="w-full border-collapse text-left text-sm">
+        <div className="mt-4 min-w-0 rounded-2xl border border-slate-200">
+          <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+          <table className="w-full min-w-[42rem] border-collapse text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="px-4 py-3">Product</th>
@@ -116,9 +190,13 @@ export function RentalsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {closed.map((r) => (
+              {displayedClosed.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-semibold text-slate-900">{r.productName}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-slate-900">
+                      {resolveProductNameLabel(r.productId, r.productName, products)}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-slate-700">{r.customerName}</td>
                   <td className="px-4 py-3 text-slate-700">{formatDisplayDate(r.returnedAt ?? '')}</td>
                   <td className="px-4 py-3">
@@ -151,9 +229,17 @@ export function RentalsPage() {
               ))}
             </tbody>
           </table>
-          {closed.length === 0 ? <div className="p-4 text-sm text-slate-600">No history yet.</div> : null}
+          </div>
+          {filteredClosed.length === 0 ? (
+            <div className="p-4 text-sm text-slate-600">
+              {!hasRentals ? 'No history yet.' : query.trim() ? 'No matching closed rentals.' : 'No closed rentals yet.'}
+            </div>
+          ) : null}
         </div>
       </GlassCard>
+      ) : null}
+        </>
+      )}
 
       <ReturnProductModal
         open={!!returnTarget}

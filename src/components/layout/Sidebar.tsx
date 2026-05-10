@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Activity as ActivityIcon,
   Camera,
@@ -8,11 +8,13 @@ import {
   Settings,
   Wrench,
   ClipboardList,
+  LogOut,
   X,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '../../utils/cn'
 import { useAppStore } from '../../store/useAppStore'
+import { useAuthStore } from '../../store/useAuthStore'
 import { Button } from '../ui/Button'
 
 const items = [
@@ -27,7 +29,16 @@ const items = [
 ] as const
 
 export function Sidebar({ mobile }: { mobile?: boolean }) {
+  const navigate = useNavigate()
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen)
+  const authEmail = useAuthStore((s) => s.email)
+  const logout = useAuthStore((s) => s.logout)
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+    if (mobile) setSidebarOpen(false)
+  }
 
   return (
     <aside
@@ -84,8 +95,24 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
         ))}
       </nav>
 
-      <div className="border-t border-slate-200 p-3 text-xs text-slate-600">
-        Secure inventory tracking with QR workflows.
+      <div className="mt-auto border-t border-slate-200 p-3">
+        {authEmail ? (
+          <div className="mb-3 truncate text-xs text-slate-600" title={authEmail}>
+            {authEmail}
+          </div>
+        ) : null}
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full justify-center !py-2.5 text-sm"
+          onClick={handleLogout}
+          leftIcon={<LogOut className="size-4" />}
+        >
+          Log out
+        </Button>
+        <p className="mt-3 text-xs leading-relaxed text-slate-600">
+          Secure inventory tracking with QR workflows.
+        </p>
       </div>
     </aside>
   )

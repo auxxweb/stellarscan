@@ -1,23 +1,19 @@
 import { useEffect } from 'react'
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { AlertTriangle, LogOut, Menu, ScanLine, X } from 'lucide-react'
+import { Outlet, Link, useLocation } from 'react-router-dom'
+import { AlertTriangle, Menu, ScanLine, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from '../components/layout/Sidebar'
 import { useAppStore } from '../store/useAppStore'
-import { useAuthStore } from '../store/useAuthStore'
 import { Button } from '../components/ui/Button'
 import { GlobalLoadingOverlay } from '../components/ui/GlobalLoadingOverlay'
 
 export function MainLayout() {
-  const navigate = useNavigate()
   const hydrate = useAppStore((s) => s.hydrate)
   const sidebarOpen = useAppStore((s) => s.sidebarOpen)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
   const loading = useAppStore((s) => s.loading)
   const apiError = useAppStore((s) => s.error)
   const clearError = useAppStore((s) => s.clearError)
-  const authEmail = useAuthStore((s) => s.email)
-  const logout = useAuthStore((s) => s.logout)
   const location = useLocation()
   const hideFab = location.pathname.startsWith('/scanner')
 
@@ -70,37 +66,23 @@ export function MainLayout() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <Button type="button" variant="secondary" className="!p-2 lg:hidden" onClick={() => toggleSidebar()} aria-label="Open menu">
                   <Menu className="size-5" />
                 </Button>
-                <div className="hidden sm:block">
+                <div className="hidden min-w-0 sm:block">
                   <div className="text-xs font-semibold text-slate-600">Stellar Camera Rentals</div>
                   <div className="text-sm font-bold text-slate-900">Command center</div>
                 </div>
               </div>
-              <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3">
-                <span className="hidden min-w-0 truncate text-xs text-slate-600 md:inline" title={authEmail ?? ''}>
-                  {authEmail}
-                </span>
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <span className="truncate text-base font-bold tracking-tight text-sky-800 sm:hidden">Stellar</span>
                 <Link
                   to="/scanner"
                   className="hidden rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 sm:inline-flex"
                 >
                   Open scanner
                 </Link>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="shrink-0 !px-3 !py-2 text-xs sm:text-sm"
-                  onClick={() => {
-                    logout()
-                    navigate('/login', { replace: true })
-                  }}
-                  leftIcon={<LogOut className="size-4" />}
-                >
-                  Log out
-                </Button>
               </div>
             </div>
           </header>
@@ -129,7 +111,7 @@ export function MainLayout() {
             </div>
           ) : null}
 
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-28 sm:pb-10">
+          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-36 sm:pb-10">
             <Outlet />
           </main>
         </div>
@@ -138,7 +120,7 @@ export function MainLayout() {
       {!hideFab ? (
         <Link
           to="/scanner"
-          className="fixed bottom-5 right-4 z-50 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-2xl shadow-sky-500/30 sm:bottom-6 sm:right-6 lg:hidden"
+          className="fixed bottom-24 right-4 z-50 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-2xl shadow-sky-500/30 sm:bottom-28 sm:right-6 lg:hidden"
           aria-label="Scan QR"
         >
           <ScanLine className="size-6" />

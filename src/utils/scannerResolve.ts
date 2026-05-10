@@ -91,3 +91,19 @@ export function findOpenMaintenanceForProduct(
     null
   )
 }
+
+/**
+ * Use the name stored on the rental / maintenance row when present; otherwise resolve from
+ * the Products list so list UIs show a proper product title instead of a blank cell.
+ */
+export function resolveProductNameLabel(
+  productId: string,
+  sheetProductName: string | undefined,
+  products: Product[],
+): string {
+  const trimmed = String(sheetProductName ?? '').trim()
+  if (trimmed) return trimmed
+  const p = products.find((x) => normalizeEntityId(x.id) === normalizeEntityId(productId))
+  const fromCatalog = (p?.productName ?? '').trim()
+  return fromCatalog || '—'
+}

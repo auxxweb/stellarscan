@@ -1,20 +1,34 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Printer, Download } from 'lucide-react'
+import { Filter, Printer, Download } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
+import { PageFiltersBar } from '../components/ui/PageFiltersBar'
 import { useAppStore } from '../store/useAppStore'
 import { deriveStellarQrCodeFromProductId } from '../utils/qrCode'
+import type { ProductStatus } from '../types'
 
 export function GeneratorPage() {
   const navigate = useNavigate()
   const products = useAppStore((s) => s.products)
   const printRef = useRef<HTMLDivElement>(null)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all')
 
   /** Same order as the Products sheet (top row → first in list). */
   const inSheetOrder = useMemo(() => products.slice(), [products])
   const empty = inSheetOrder.length === 0
+
+  const filteredProducts = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return inSheetOrder.filter((p) => {
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false
+      if (!q) return true
+      const hay = `${p.productName} ${p.brand} ${p.category} ${p.modelNumber} ${p.serialNumber} ${deriveStellarQrCodeFromProductId(p.id)}`.toLowerCase()
+      return hay.includes(q)
+    })
+  }, [inSheetOrder, query, statusFilter])
 
   const downloadSvg = (productName: string, svg: SVGSVGElement | null) => {
     if (!svg) return
@@ -50,6 +64,29 @@ export function GeneratorPage() {
         </Button>
       </div>
 
+      {!empty ? (
+        <PageFiltersBar
+          query={query}
+          onQueryChange={setQuery}
+          searchPlaceholder="Search name, brand, model, serial, QR…"
+          filters={
+            <>
+              <Filter className="size-4 shrink-0 text-slate-500 max-sm:hidden" aria-hidden />
+              <select
+                className="w-full min-w-[11rem] rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 sm:w-auto"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as ProductStatus | 'all')}
+              >
+                <option value="all">All statuses</option>
+                <option value="available">Available</option>
+                <option value="rented">Rented</option>
+                <option value="maintenance">Maintenance</option>
+              </select>
+            </>
+          }
+        />
+      ) : null}
+
       {empty ? (
         <GlassCard>
           <div className="text-sm font-semibold text-slate-900">No products to print</div>
@@ -68,8 +105,15 @@ export function GeneratorPage() {
         </GlassCard>
       ) : null}
 
+      {!empty && filteredProducts.length === 0 ? (
+        <GlassCard>
+          <div className="text-sm font-semibold text-slate-900">No matches</div>
+          <p className="mt-1 text-sm text-slate-600">Adjust search or status filter to see QR cards.</p>
+        </GlassCard>
+      ) : null}
+
       <div ref={printRef} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 print:grid-cols-3">
-        {inSheetOrder.map((p) => {
+        {filteredProducts.map((p) => {
           const scanPayload = deriveStellarQrCodeFromProductId(p.id)
           return (
           <GlassCard key={p.id} className="flex flex-col items-center text-center">
