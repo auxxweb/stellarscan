@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --radius-glass: 1.25rem;
+  --shadow-glow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 24px 80px -32px rgb(0 0 0 / 0.75);
+}
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  body {
+    font-family: var(--font-sans);
+    @apply min-h-dvh bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+}
