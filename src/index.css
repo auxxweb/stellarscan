@@ -17,3 +17,18 @@
     @apply min-h-dvh bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
   }
 }
+
+/* Full-frame scanner: no dimmed “shaded region”, responsive video */
+@layer components {
+  .stellar-scanner-mount video {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: min(85dvh, 720px);
+    object-fit: cover;
+  }
+
+  .stellar-scanner-mount #qr-shaded-region {
+    display: none !important;
+  }
+}

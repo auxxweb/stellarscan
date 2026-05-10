@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
-import { motion } from 'framer-motion'
 import { RefreshCw, ShieldCheck } from 'lucide-react'
-import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { useProductScannerFlow } from '../hooks/useProductScannerFlow'
 import type { Product } from '../types'
@@ -38,7 +36,6 @@ export function ScannerPage() {
 
   const readerDomId = sanitizeDomId(useId())
 
-  const [running, setRunning] = useState(false)
   const [last, setLast] = useState<string | null>(null)
   const instanceRef = useRef<Html5Qrcode | null>(null)
   const startingRef = useRef(false)
@@ -71,7 +68,6 @@ export function ScannerPage() {
     } finally {
       instanceRef.current = null
       startingRef.current = false
-      setRunning(false)
     }
   }, [])
 
@@ -91,14 +87,8 @@ export function ScannerPage() {
     startingRef.current = true
     setLast(null)
 
-    const scanConfig = {
-      fps: 10,
-      qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-        const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
-        const size = Math.max(200, Math.floor(minEdge * 0.72))
-        return { width: size, height: size }
-      },
-    }
+    /* No `qrbox` → html5-qrcode uses the full viewfinder and does NOT draw the dark shaded mask. */
+    const scanConfig = { fps: 10 }
 
     const makeInstance = () =>
       new Html5Qrcode(readerDomId, {
@@ -121,7 +111,6 @@ export function ScannerPage() {
         instanceRef.current = null
       }
       startingRef.current = false
-      setRunning(false)
 
       setLast(decodedText)
       vibrateSuccess()
@@ -133,7 +122,6 @@ export function ScannerPage() {
     const tryRun = async (camera: string | MediaTrackConstraints) => {
       const instance = makeInstance()
       instanceRef.current = instance
-      setRunning(true)
       await instance.start(
         camera,
         scanConfig,
@@ -152,12 +140,10 @@ export function ScannerPage() {
     } catch (first) {
       await stopScanner()
       try {
-        const fallback: MediaTrackConstraints =
-          typeof primary === 'string' ? { facingMode: 'user' } : { facingMode: 'user' }
+        const fallback: MediaTrackConstraints = { facingMode: 'user' }
         await tryRun(fallback)
       } catch {
         startingRef.current = false
-        setRunning(false)
         pushToast(
           first instanceof Error ? `Camera error: ${first.message}` : 'Camera could not start. Allow permission or tap Restart.',
           'error',
@@ -181,36 +167,30 @@ export function ScannerPage() {
       <div>
         <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Field tool</div>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">QR scanner</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Optimized for one-hand operation and instant routing.</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Full camera view — nothing dimmed over the QR.</p>
       </div>
 
-      <GlassCard className="relative overflow-hidden !p-0">
-        <div className="absolute left-4 top-4 z-30 flex items-center gap-2 rounded-full bg-slate-950/55 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
-          <ShieldCheck className="size-4 text-emerald-300" />
-          Live camera
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-lg dark:border-white/15">
+        <div className="relative w-full">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-white/15 backdrop-blur-sm sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
+            <ShieldCheck className="size-3.5 text-emerald-300 sm:size-4" aria-hidden />
+            Live camera
+          </div>
+
+          <div
+            id={readerDomId}
+            className="stellar-scanner-mount min-h-[min(50dvh,400px)] w-full sm:min-h-[min(70dvh,560px)] md:min-h-[min(75dvh,720px)]"
+          />
         </div>
 
-        <div className="relative z-0 min-h-[min(70vh,560px)] w-full bg-slate-950">
-          <div id={readerDomId} className="h-[min(70vh,560px)] w-full" />
-
-          <motion.div
-            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
-            initial={{ opacity: 0.35 }}
-            animate={{ opacity: running ? [0.25, 0.55, 0.25] : 0.15 }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <div className="size-[min(72vw,280px)] rounded-3xl ring-2 ring-sky-400/50" />
-          </motion.div>
-        </div>
-
-        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-slate-700 dark:text-slate-200">
+        <div className="flex flex-col gap-3 border-t border-white/10 bg-slate-950/95 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-slate-200">
             {last ? (
               <span>
-                Last scan: <span className="font-semibold text-slate-900 dark:text-slate-50">{last}</span>
+                Last scan: <span className="font-semibold text-white">{last}</span>
               </span>
             ) : (
-              <span>Hold the QR steady in the box. If the preview is black, tap Restart and allow camera access.</span>
+              <span>Show the whole QR in frame. Tap Restart if the preview is blank.</span>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -224,7 +204,7 @@ export function ScannerPage() {
             </Button>
           </div>
         </div>
-      </GlassCard>
+      </div>
 
       <ScannerDecisionModal
         open={!!decisionProduct}
