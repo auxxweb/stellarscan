@@ -58,7 +58,6 @@ export function DashboardPage() {
   const products = useAppStore((s) => s.products)
   const rentals = useAppStore((s) => s.rentals)
   const activityLogs = useAppStore((s) => s.activityLogs)
-  const loading = useAppStore((s) => s.loading)
   const hydrated = useAppStore((s) => s.hydrated)
 
   const stats = useMemo(() => {
@@ -83,7 +82,8 @@ export function DashboardPage() {
 
   const maxDist = Math.max(1, stats.dist.available + stats.dist.rented + stats.dist.maintenance)
 
-  if (!hydrated || loading) {
+  // Only block on first hydrate. Global `loading` is also true during mutations — do not hide the whole dashboard.
+  if (!hydrated) {
     return (
       <div className="grid gap-4 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
@@ -175,7 +175,7 @@ export function DashboardPage() {
             {activityLogs.slice(0, 6).map((log, idx) => (
               <motion.div
                 key={log.id}
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
                 className="rounded-xl border border-slate-200 bg-slate-50/70 p-3"
@@ -210,7 +210,7 @@ export function DashboardPage() {
             return (
               <motion.div
                 key={r.id}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
                 className="flex gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3"

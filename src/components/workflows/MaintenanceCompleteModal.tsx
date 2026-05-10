@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { MaintenanceRecord, Product } from '../../types'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
-import { Textarea } from '../ui/Textarea'
 import { Button } from '../ui/Button'
 import { useAppStore } from '../../store/useAppStore'
 import { useToastStore } from '../../store/useToastStore'
@@ -23,11 +22,9 @@ export function MaintenanceCompleteModal({
   const pushToast = useToastStore((s) => s.push)
 
   const [repairCost, setRepairCost] = useState('0')
-  const [notes, setNotes] = useState('')
 
   const reset = () => {
     setRepairCost('0')
-    setNotes('')
   }
 
   const submit = async () => {
@@ -38,7 +35,7 @@ export function MaintenanceCompleteModal({
         productId: product.id,
         maintenanceId: record.id,
         repairCost: Number(repairCost || 0),
-        notes: notes.trim(),
+        notes: '',
       },
     })
     pushToast(`${product.productName} is available again.`, 'success')
@@ -79,12 +76,6 @@ export function MaintenanceCompleteModal({
             Repair cost
           </label>
           <Input inputMode="decimal" value={repairCost} onChange={(e) => setRepairCost(e.target.value)} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600">
-            Completion notes
-          </label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       </div>
     </Modal>

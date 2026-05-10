@@ -74,12 +74,8 @@ export function RentalViewModal({
               </dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-600">Final bill</dt>
+              <dt className="text-slate-600">Bill amount</dt>
               <dd className="font-semibold text-slate-900">{formatInr(rental.finalBill)}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-slate-600">Extra charges</dt>
-              <dd className="text-slate-800">{formatInr(rental.extraCharges)}</dd>
             </div>
           </>
         ) : null}

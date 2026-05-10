@@ -123,7 +123,13 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
       break
     }
     case 'rentOut': {
-      const { productId, customerName, phone, expectedReturnDate, advanceAmount, notes } = action.payload
+      const pl = action.payload
+      const productId = pl.productId
+      const customerName = pl.customerName
+      const phone = pl.phone
+      const expectedReturnDate = pl.expectedReturnDate
+      const advanceAmt = Number(pl.advanceAmount ?? 0)
+      const notesVal = typeof pl.notes === 'string' ? pl.notes : ''
       const product = next.products.find((x) => x.id === productId)
       if (!product || product.status !== 'available') break
       product.status = 'rented'
@@ -137,11 +143,11 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
         productName: product.productName,
         customerName,
         phone,
-        advanceAmount: Number(advanceAmount),
+        advanceAmount: Number.isFinite(advanceAmt) ? advanceAmt : 0,
         expectedReturnDate,
         finalBill: null,
         extraCharges: null,
-        notes,
+        notes: notesVal,
         status: 'active',
         rentedAt: nowIso(),
         returnedAt: null,
@@ -181,7 +187,7 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
           productId,
           productName: product.productName,
           message: `Return completed (${returnKind.replace('_', ' ')})`,
-          meta: { rentalId, finalBill, extraCharges },
+          meta: { rentalId, billAmount: Number(finalBill) },
         }),
       )
       break

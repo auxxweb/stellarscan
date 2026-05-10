@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import type { Product } from '../../types'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
-import { Textarea } from '../ui/Textarea'
 import { Button } from '../ui/Button'
 import { useAppStore } from '../../store/useAppStore'
 import { useToastStore } from '../../store/useToastStore'
+import { isoFromDateOnlyInput } from '../../utils/dates'
 
 export function RentOutModal({
   open,
@@ -23,22 +23,17 @@ export function RentOutModal({
   const [customerName, setCustomerName] = useState('')
   const [phone, setPhone] = useState('')
   const [expectedReturnDate, setExpectedReturnDate] = useState('')
-  const [advanceAmount, setAdvanceAmount] = useState('150')
-  const [notes, setNotes] = useState('')
 
   useEffect(() => {
     if (!open) return
     const d = new Date(Date.now() + 48 * 60 * 60 * 1000)
-    d.setMinutes(0, 0, 0)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- seed datetime-local when modal opens
-    setExpectedReturnDate(d.toISOString().slice(0, 16))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seed date input when modal opens
+    setExpectedReturnDate(d.toISOString().slice(0, 10))
   }, [open])
 
   const reset = () => {
     setCustomerName('')
     setPhone('')
-    setAdvanceAmount('150')
-    setNotes('')
   }
 
   const submit = async () => {
@@ -47,15 +42,20 @@ export function RentOutModal({
       pushToast('Customer name and phone are required.', 'error')
       return
     }
+    const dueIso = isoFromDateOnlyInput(expectedReturnDate)
+    if (!dueIso) {
+      pushToast('Please choose an expected return date.', 'error')
+      return
+    }
     await runAction({
       action: 'rentOut',
       payload: {
         productId: product.id,
         customerName: customerName.trim(),
         phone: phone.trim(),
-        expectedReturnDate: new Date(expectedReturnDate).toISOString(),
-        advanceAmount: Number(advanceAmount || 0),
-        notes: notes.trim(),
+        expectedReturnDate: dueIso,
+        advanceAmount: 0,
+        notes: '',
       },
     })
     pushToast(`${product.productName} rented successfully.`, 'success')
@@ -108,27 +108,7 @@ export function RentOutModal({
           <label className="mb-1 block text-xs font-semibold text-slate-600">
             Expected return
           </label>
-          <Input
-            type="datetime-local"
-            value={expectedReturnDate}
-            onChange={(e) => setExpectedReturnDate(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600">
-            Advance amount
-          </label>
-          <Input
-            inputMode="decimal"
-            value={advanceAmount}
-            onChange={(e) => setAdvanceAmount(e.target.value)}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-semibold text-slate-600">
-            Notes
-          </label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Input type="date" value={expectedReturnDate} onChange={(e) => setExpectedReturnDate(e.target.value)} />
         </div>
       </div>
     </Modal>

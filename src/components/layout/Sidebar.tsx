@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
-  Activity,
+  Activity as ActivityIcon,
   Camera,
   LayoutDashboard,
   QrCode,
@@ -20,7 +20,7 @@ const items = [
   { to: '/products', label: 'Products', icon: Camera },
   { to: '/rentals', label: 'Rentals', icon: ClipboardList },
   { to: '/maintenance', label: 'Maintenance', icon: Wrench },
-  { to: '/activity', label: 'Activity History', icon: Activity },
+  { to: '/activity', label: 'Activity History', icon: ActivityIcon },
   { to: '/scanner', label: 'QR Scanner', icon: ScanLine },
   { to: '/generator', label: 'QR Generator', icon: QrCode },
   { to: '/settings', label: 'Settings', icon: Settings },

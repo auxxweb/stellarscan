@@ -121,7 +121,19 @@ const ARRAY_ALIASES: Record<string, string[]> = {
   products: ['rows', 'items', 'records', 'list', 'values', 'result', 'products'],
   rentals: ['rows', 'items', 'records', 'list', 'values', 'result', 'rentals'],
   maintenance: ['rows', 'items', 'records', 'list', 'values', 'result', 'maintenance'],
-  activityLogs: ['rows', 'items', 'records', 'list', 'values', 'activities', 'logs', 'activity', 'activityLogs'],
+  activityLogs: [
+    'rows',
+    'items',
+    'records',
+    'list',
+    'values',
+    'activities',
+    'activity',
+    'activityLog',
+    'activity_logs',
+    'logs',
+    'activityLogs',
+  ],
 }
 
 function tryAliasesInContainer<T>(
@@ -217,6 +229,32 @@ export async function getActivities(apiUrl: string): Promise<ActivityLog[]> {
 
 export async function loadFullDashboard(apiUrl: string): Promise<DashboardPayload> {
   try {
+    /** Single round-trip when Apps Script supports `getDashboard` (faster, less Apps Script execution quota). */
+    try {
+      const bundle = await fetchJson<unknown>(actionUrl(apiUrl, 'getDashboard'))
+      const o = bundle as Record<string, unknown>
+      if (
+        Array.isArray(o.products) &&
+        Array.isArray(o.rentals) &&
+        Array.isArray(o.maintenance) &&
+        Array.isArray(o.activityLogs)
+      ) {
+        const payload = normalizeDashboardPayload(o as unknown as DashboardPayload)
+        console.info(LOG, 'Dashboard fetch OK (single getDashboard)', {
+          endpoint: apiUrl,
+          counts: {
+            products: payload.products.length,
+            rentals: payload.rentals.length,
+            maintenance: payload.maintenance.length,
+            activityLogs: payload.activityLogs.length,
+          },
+        })
+        return payload
+      }
+    } catch {
+      /* Deployed script may be older — fall back to parallel GETs */
+    }
+
     const [products, rentals, maintenance, activityLogs] = await Promise.all([
       getProducts(apiUrl),
       getRentals(apiUrl),
@@ -309,14 +347,17 @@ export async function executeMutationFromSheetAction(
     }
     case 'rentOut': {
       const p = action.payload
+      const dueIso = p.expectedReturnDate
       return postSheetMutation(apiUrl, {
         action: 'rentProduct',
         productId: p.productId,
         customerName: p.customerName,
         phone: p.phone,
-        expectedReturnDate: p.expectedReturnDate,
-        advanceAmount: p.advanceAmount,
-        notes: p.notes,
+        /** Rentals sheet column `expectedReturn` */
+        expectedReturn: dueIso,
+        expectedReturnDate: dueIso,
+        advanceAmount: p.advanceAmount ?? 0,
+        notes: p.notes ?? '',
       })
     }
     case 'returnProduct': {
@@ -325,8 +366,10 @@ export async function executeMutationFromSheetAction(
         action: 'returnProduct',
         productId: p.productId,
         rentalId: p.rentalId,
+        /** Rentals sheet column `billAmount` */
+        billAmount: p.finalBill,
         finalBill: p.finalBill,
-        extraCharges: p.extraCharges,
+        extraCharges: p.extraCharges ?? 0,
         notes: p.notes,
         returnedAt: p.returnedAt,
         returnKind: p.returnKind,
@@ -334,23 +377,28 @@ export async function executeMutationFromSheetAction(
     }
     case 'sendToMaintenance': {
       const p = action.payload
+      const eta = p.estimatedCompletion
       return postSheetMutation(apiUrl, {
         action: 'markMaintenance',
         productId: p.productId,
         givenTo: p.givenTo,
         issue: p.issue,
-        estimatedCompletion: p.estimatedCompletion,
-        notes: p.notes,
+        /** Sheet column is `expectedCompletion`; send both param names for Apps Script. */
+        estimatedCompletion: eta,
+        expectedCompletion: eta,
+        notes: p.notes ?? '',
       })
     }
     case 'completeMaintenance': {
       const p = action.payload
+      const cost = p.repairCost
       return postSheetMutation(apiUrl, {
         action: 'completeMaintenance',
         productId: p.productId,
         maintenanceId: p.maintenanceId,
-        repairCost: p.repairCost,
-        notes: p.notes,
+        repairCost: cost,
+        cost,
+        notes: p.notes ?? '',
       })
     }
     case 'resetDemo':

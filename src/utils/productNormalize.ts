@@ -1,4 +1,6 @@
 import type {
+  ActivityLog,
+  ActivityType,
   DashboardPayload,
   MaintenanceRecord,
   MaintenanceRecordStatus,
@@ -8,7 +10,14 @@ import type {
   RentalRecordStatus,
   ReturnKind,
 } from '../types'
+import { createId } from './id'
 import { deriveStellarQrCodeFromProductId } from './qrCode'
+import {
+  coerceActivityFromSheet,
+  coerceMaintenanceFromSheet,
+  coerceProductFromSheet,
+  coerceRentalFromSheet,
+} from './sheetRecordMap'
 
 const LOG = '[StellarScan]'
 
@@ -125,8 +134,12 @@ export function normalizeRental(r: Rental): Rental {
   const rk = r.returnKind
   const returnKind =
     rk != null && String(rk).trim() !== '' ? normalizeReturnKind(rk) : null
+  const rawAdv = (r as unknown as { advanceAmount?: unknown }).advanceAmount
+  const advanceAmount =
+    rawAdv === undefined || rawAdv === null ? 0 : Number(rawAdv)
   return {
     ...r,
+    advanceAmount: Number.isFinite(advanceAmount) ? advanceAmount : 0,
     status: normalizeRentalStatus(r.status, r),
     returnKind,
   }
@@ -169,12 +182,129 @@ export function normalizeMaintenanceRecord(m: MaintenanceRecord): MaintenanceRec
   }
 }
 
+function normalizeActivityType(raw: unknown): ActivityType {
+  const s = normalizeSheetKey(raw)
+  const aliases: Record<string, ActivityType> = {
+    product_added: 'product_added',
+    rental_started: 'rental_started',
+    rental_closed: 'rental_closed',
+    maintenance_started: 'maintenance_started',
+    maintenance_closed: 'maintenance_closed',
+    status_changed: 'status_changed',
+    added: 'product_added',
+    rent: 'rental_started',
+    rented: 'rental_started',
+    return: 'rental_closed',
+    returned: 'rental_closed',
+    maintenance: 'maintenance_started',
+    maint: 'maintenance_started',
+    service: 'maintenance_started',
+    complete: 'maintenance_closed',
+    completed: 'maintenance_closed',
+  }
+  if (aliases[s]) return aliases[s]
+  if (
+    s === 'product_added' ||
+    s === 'rental_started' ||
+    s === 'rental_closed' ||
+    s === 'maintenance_started' ||
+    s === 'maintenance_closed' ||
+    s === 'status_changed'
+  ) {
+    return s
+  }
+  return 'status_changed'
+}
+
+function normalizeActivityMeta(raw: unknown): Record<string, unknown> {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, unknown>
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const p = JSON.parse(raw) as unknown
+      if (p && typeof p === 'object' && !Array.isArray(p)) return p as Record<string, unknown>
+    } catch {
+      /* ignore */
+    }
+  }
+  return {}
+}
+
+/** Maps sheet/API rows to canonical keys when headers differ (e.g. "Product Name" vs productName). */
+function looseActivityFieldIndex(raw: Record<string, unknown>): Map<string, unknown> {
+  const m = new Map<string, unknown>()
+  for (const [k, v] of Object.entries(raw)) {
+    m.set(normalizeSheetKey(k), v)
+  }
+  return m
+}
+
+function pickLooseField(idx: Map<string, unknown>, candidates: string[]): string {
+  for (const c of candidates) {
+    const nk = normalizeSheetKey(c)
+    const v = idx.get(nk)
+    if (v != null && String(v).trim() !== '') return String(v).trim()
+  }
+  return ''
+}
+
+export function normalizeActivityLog(row: ActivityLog): ActivityLog {
+  const raw = row as unknown as Record<string, unknown>
+  const idx = looseActivityFieldIndex(raw)
+
+  const productName =
+    String(row.productName ?? '').trim() ||
+    pickLooseField(idx, ['productName', 'product name', 'name', 'title', 'product'])
+  const message =
+    String(row.message ?? '').trim() ||
+    pickLooseField(idx, ['message', 'description', 'details', 'notes', 'note', 'comment', 'text'])
+  const productId =
+    String(row.productId ?? '').trim() ||
+    pickLooseField(idx, ['productId', 'product id', 'sku', 'asset id'])
+
+  const mergedType =
+    String(row.type ?? '').trim() ||
+    pickLooseField(idx, ['type', 'event', 'action', 'activity', 'activity type'])
+
+  const createdCandidates = [
+    (row as { createdAt?: unknown }).createdAt,
+    idx.get(normalizeSheetKey('createdAt')),
+    idx.get(normalizeSheetKey('created at')),
+    idx.get(normalizeSheetKey('date')),
+    idx.get(normalizeSheetKey('timestamp')),
+    idx.get(normalizeSheetKey('time')),
+  ].filter((x) => x != null && String(x).trim() !== '')
+
+  let createdAt = ''
+  const createdRaw = createdCandidates[0]
+  if (createdRaw instanceof Date) createdAt = createdRaw.toISOString()
+  else if (typeof createdRaw === 'number' && Number.isFinite(createdRaw)) {
+    const d = new Date(createdRaw)
+    createdAt = Number.isNaN(d.getTime()) ? '' : d.toISOString()
+  } else createdAt = normalizeQrPayload(String(createdRaw ?? ''))
+
+  const idStr =
+    String(row.id ?? '').trim() ||
+    pickLooseField(idx, ['id', 'log id', 'entry id']) ||
+    createId()
+
+  return {
+    id: idStr,
+    type: normalizeActivityType(mergedType),
+    productId,
+    productName,
+    message,
+    meta: normalizeActivityMeta(row.meta),
+    createdAt,
+  }
+}
+
 /** Normalize all sheet-backed entities so list filters match. */
 export function normalizeDashboardPayload(data: DashboardPayload): DashboardPayload {
+  const logs = Array.isArray(data.activityLogs) ? data.activityLogs : []
   return {
-    products: data.products.map(normalizeProduct),
-    rentals: data.rentals.map(normalizeRental),
-    maintenance: data.maintenance.map(normalizeMaintenanceRecord),
-    activityLogs: data.activityLogs,
+    products: data.products.map((p) => normalizeProduct(coerceProductFromSheet(p))),
+    rentals: data.rentals.map((r) => normalizeRental(coerceRentalFromSheet(r))),
+    maintenance: data.maintenance.map((m) => normalizeMaintenanceRecord(coerceMaintenanceFromSheet(m))),
+    activityLogs: logs.map((r) => normalizeActivityLog(coerceActivityFromSheet(r) as ActivityLog)),
   }
 }

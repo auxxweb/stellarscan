@@ -2,11 +2,10 @@ import { useMemo, useState } from 'react'
 import type { Product, Rental } from '../../types'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
-import { Textarea } from '../ui/Textarea'
 import { Button } from '../ui/Button'
 import { useAppStore } from '../../store/useAppStore'
 import { useToastStore } from '../../store/useToastStore'
-import { computeReturnKind, formatDisplayDate, nowIso } from '../../utils/dates'
+import { computeReturnKind, nowIso } from '../../utils/dates'
 import { Badge } from '../ui/Badge'
 import { cn } from '../../utils/cn'
 
@@ -25,9 +24,7 @@ export function ReturnProductModal({
   const loading = useAppStore((s) => s.loading)
   const pushToast = useToastStore((s) => s.push)
 
-  const [finalBill, setFinalBill] = useState('')
-  const [extraCharges, setExtraCharges] = useState('0')
-  const [notes, setNotes] = useState('')
+  const [billAmount, setBillAmount] = useState('')
 
   const preview = useMemo(() => {
     if (!rental) return null
@@ -38,16 +35,14 @@ export function ReturnProductModal({
   }, [rental])
 
   const reset = () => {
-    setFinalBill('')
-    setExtraCharges('0')
-    setNotes('')
+    setBillAmount('')
   }
 
   const submit = async () => {
     if (!product || !rental || !preview) return
-    const bill = Number(finalBill || 0)
+    const bill = Number(billAmount || 0)
     if (Number.isNaN(bill)) {
-      pushToast('Final bill must be a number.', 'error')
+      pushToast('Bill amount must be a number.', 'error')
       return
     }
     await runAction({
@@ -56,8 +51,8 @@ export function ReturnProductModal({
         productId: product.id,
         rentalId: rental.id,
         finalBill: bill,
-        extraCharges: Number(extraCharges || 0),
-        notes: notes.trim(),
+        extraCharges: 0,
+        notes: '',
         returnedAt: preview.returnedAt,
         returnKind: preview.kind,
       },
@@ -108,25 +103,12 @@ export function ReturnProductModal({
           >
             {preview?.label ?? '—'}
           </Badge>
-          <span className="text-xs text-slate-600">
-            Due {rental ? formatDisplayDate(rental.expectedReturnDate) : '—'}
-          </span>
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-600">
-            Final bill
+            Bill amount
           </label>
-          <Input inputMode="decimal" value={finalBill} onChange={(e) => setFinalBill(e.target.value)} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600">
-            Extra charges
-          </label>
-          <Input inputMode="decimal" value={extraCharges} onChange={(e) => setExtraCharges(e.target.value)} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600">Notes</label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Input inputMode="decimal" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
         </div>
       </div>
     </Modal>

@@ -27,7 +27,7 @@ export function ProductCard({
   onMaintenanceComplete: (p: Product) => void
 }) {
   return (
-    <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
+    <motion.div layout initial={{ opacity: 1, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
       <GlassCard className="group relative overflow-hidden p-0">
         <div className="relative h-40 w-full overflow-hidden">
           <img src={product.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />

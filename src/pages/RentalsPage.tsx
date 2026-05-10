@@ -54,7 +54,7 @@ export function RentalsPage() {
           {active.map((r, idx) => (
             <motion.div
               key={r.id}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 1, y: 0 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.03 }}
               className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"

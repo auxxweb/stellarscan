@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import type { Product } from '../../types'
 import { Modal } from '../ui/Modal'
 import { Input } from '../ui/Input'
-import { Textarea } from '../ui/Textarea'
 import { Button } from '../ui/Button'
 import { useAppStore } from '../../store/useAppStore'
 import { useToastStore } from '../../store/useToastStore'
+import { isoFromDateOnlyInput } from '../../utils/dates'
+
+/** Sent to the API when the issue description field is hidden in the UI. */
+const DEFAULT_MAINTENANCE_ISSUE = 'Maintenance service'
 
 export function MaintenanceStartModal({
   open,
@@ -21,28 +24,24 @@ export function MaintenanceStartModal({
   const pushToast = useToastStore((s) => s.push)
 
   const [givenTo, setGivenTo] = useState('Stellar Service Desk')
-  const [issue, setIssue] = useState('')
   const [estimatedCompletion, setEstimatedCompletion] = useState('')
-  const [notes, setNotes] = useState('')
 
   useEffect(() => {
     if (!open) return
     const d = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-    d.setHours(18, 0, 0, 0)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- seed datetime-local when modal opens
-    setEstimatedCompletion(d.toISOString().slice(0, 16))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seed date input when modal opens
+    setEstimatedCompletion(d.toISOString().slice(0, 10))
   }, [open])
 
   const reset = () => {
     setGivenTo('Stellar Service Desk')
-    setIssue('')
-    setNotes('')
   }
 
   const submit = async () => {
     if (!product) return
-    if (!issue.trim()) {
-      pushToast('Please describe the issue.', 'error')
+    const etaIso = isoFromDateOnlyInput(estimatedCompletion)
+    if (!etaIso) {
+      pushToast('Please choose an estimated completion date.', 'error')
       return
     }
     await runAction({
@@ -50,9 +49,9 @@ export function MaintenanceStartModal({
       payload: {
         productId: product.id,
         givenTo: givenTo.trim(),
-        issue: issue.trim(),
-        estimatedCompletion: new Date(estimatedCompletion).toISOString(),
-        notes: notes.trim(),
+        issue: DEFAULT_MAINTENANCE_ISSUE,
+        estimatedCompletion: etaIso,
+        notes: '',
       },
     })
     pushToast(`${product.productName} moved to maintenance.`, 'success')
@@ -95,23 +94,9 @@ export function MaintenanceStartModal({
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-slate-600">
-            Issue description
-          </label>
-          <Textarea value={issue} onChange={(e) => setIssue(e.target.value)} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Estimated completion
           </label>
-          <Input
-            type="datetime-local"
-            value={estimatedCompletion}
-            onChange={(e) => setEstimatedCompletion(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600">Notes</label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Input type="date" value={estimatedCompletion} onChange={(e) => setEstimatedCompletion(e.target.value)} />
         </div>
       </div>
     </Modal>

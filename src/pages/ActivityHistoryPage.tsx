@@ -1,6 +1,5 @@
-import { Activity, PackagePlus, RotateCcw, Wrench } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { GlassCard } from '../components/ui/GlassCard'
+import { Activity as ActivityIcon, PackagePlus, RotateCcw, Wrench } from 'lucide-react'
+import { Skeleton } from '../components/ui/Skeleton'
 import { useAppStore } from '../store/useAppStore'
 import { formatDisplayDate } from '../utils/dates'
 import type { ActivityType } from '../types'
@@ -11,19 +10,24 @@ function iconFor(type: ActivityType) {
     case 'product_added':
       return PackagePlus
     case 'rental_started':
-      return Activity
+      return ActivityIcon
     case 'rental_closed':
       return RotateCcw
     case 'maintenance_started':
     case 'maintenance_closed':
       return Wrench
     default:
-      return Activity
+      return ActivityIcon
   }
+}
+
+function typeLabel(type: ActivityType): string {
+  return String(type ?? '').replaceAll('_', ' ') || 'activity'
 }
 
 export function ActivityHistoryPage() {
   const logs = useAppStore((s) => s.activityLogs)
+  const hydrated = useAppStore((s) => s.hydrated)
 
   return (
     <div className="space-y-4">
@@ -35,47 +39,64 @@ export function ActivityHistoryPage() {
         </p>
       </div>
 
-      <GlassCard>
-        <div className="relative">
-          <div className="absolute left-[18px] top-2 bottom-2 w-px bg-gradient-to-b from-sky-500/0 via-sky-500/40 to-indigo-500/0" />
-          <div className="space-y-4">
-            {logs.map((log, idx) => {
-              const Icon = iconFor(log.type)
-              return (
-                <motion.div
-                  key={log.id}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: Math.min(idx * 0.02, 0.35) }}
-                  className="relative flex gap-4 pl-2"
-                >
-                  <div
-                    className={cn(
-                      'relative z-[1] grid size-9 shrink-0 place-items-center rounded-2xl ring-1',
-                      'bg-white text-slate-900 ring-slate-200',
-                    )}
-                  >
-                    <Icon className="size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-semibold text-slate-900">{log.productName}</div>
-                      <div className="text-[11px] font-semibold text-slate-500">
-                        {formatDisplayDate(log.createdAt)}
+      {/* Avoid backdrop-blur + motion here — some GPUs hide nested text; keep solid bg + explicit colors */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-lg shadow-slate-900/5">
+        {!hydrated ? (
+          <div className="space-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+        ) : (
+          <div className="relative text-slate-900">
+            <div className="pointer-events-none absolute left-[18px] top-2 bottom-2 w-px bg-gradient-to-b from-sky-500/0 via-sky-500/40 to-indigo-500/0" />
+            <div className="space-y-4">
+              {logs.map((log) => {
+                const Icon = iconFor(log.type)
+                const title = log.productName.trim() || log.productId.trim() || 'Activity'
+                const body =
+                  log.message.trim() ||
+                  (log.productId && !log.productName.trim()
+                    ? `Product ID: ${log.productId}`
+                    : 'No message in sheet row — check the Message column or refresh data.')
+                return (
+                  <div key={log.id} className="relative flex gap-4 pl-2">
+                    <div
+                      className={cn(
+                        'relative z-[1] grid size-9 shrink-0 place-items-center rounded-2xl ring-1',
+                        'bg-white text-slate-900 ring-slate-200',
+                      )}
+                    >
+                      <Icon className="size-4 shrink-0 text-slate-800" aria-hidden />
+                    </div>
+                    <div className="relative z-[1] min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="font-semibold text-slate-900">{title}</div>
+                        <time
+                          className="text-[11px] font-semibold tabular-nums text-slate-600"
+                          dateTime={log.createdAt || undefined}
+                        >
+                          {formatDisplayDate(log.createdAt)}
+                        </time>
+                      </div>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-800">{body}</p>
+                      <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                        {typeLabel(log.type)}
                       </div>
                     </div>
-                    <div className="mt-1 text-sm text-slate-700">{log.message}</div>
-                    <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      {log.type.replaceAll('_', ' ')}
-                    </div>
                   </div>
-                </motion.div>
-              )
-            })}
-            {logs.length === 0 ? <div className="text-sm text-slate-600">No activity yet.</div> : null}
+                )
+              })}
+              {logs.length === 0 ? (
+                <p className="text-sm text-slate-600">
+                  No activity yet. Events appear here when you add products, rentals, or maintenance from the app (or when
+                  rows exist on the ActivityLogs sheet).
+                </p>
+              ) : null}
+            </div>
           </div>
-        </div>
-      </GlassCard>
+        )}
+      </section>
     </div>
   )
 }

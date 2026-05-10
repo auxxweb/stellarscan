@@ -1,16 +1,29 @@
-import { Outlet, Link, useLocation } from 'react-router-dom'
-import { AlertTriangle, Menu, ScanLine, X } from 'lucide-react'
+import { useEffect } from 'react'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { AlertTriangle, LogOut, Menu, ScanLine, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from '../components/layout/Sidebar'
 import { useAppStore } from '../store/useAppStore'
+import { useAuthStore } from '../store/useAuthStore'
 import { Button } from '../components/ui/Button'
+import { GlobalLoadingOverlay } from '../components/ui/GlobalLoadingOverlay'
+
 export function MainLayout() {
+  const navigate = useNavigate()
+  const hydrate = useAppStore((s) => s.hydrate)
   const sidebarOpen = useAppStore((s) => s.sidebarOpen)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
+  const loading = useAppStore((s) => s.loading)
   const apiError = useAppStore((s) => s.error)
   const clearError = useAppStore((s) => s.clearError)
+  const authEmail = useAuthStore((s) => s.email)
+  const logout = useAuthStore((s) => s.logout)
   const location = useLocation()
   const hideFab = location.pathname.startsWith('/scanner')
+
+  useEffect(() => {
+    void hydrate()
+  }, [hydrate])
 
   return (
     <div className="min-h-dvh bg-slate-100 text-slate-900">
@@ -66,13 +79,28 @@ export function MainLayout() {
                   <div className="text-sm font-bold text-slate-900">Command center</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3">
+                <span className="hidden min-w-0 truncate text-xs text-slate-600 md:inline" title={authEmail ?? ''}>
+                  {authEmail}
+                </span>
                 <Link
                   to="/scanner"
                   className="hidden rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 sm:inline-flex"
                 >
                   Open scanner
                 </Link>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="shrink-0 !px-3 !py-2 text-xs sm:text-sm"
+                  onClick={() => {
+                    logout()
+                    navigate('/login', { replace: true })
+                  }}
+                  leftIcon={<LogOut className="size-4" />}
+                >
+                  Log out
+                </Button>
               </div>
             </div>
           </header>
@@ -116,6 +144,8 @@ export function MainLayout() {
           <ScanLine className="size-6" />
         </Link>
       ) : null}
+
+      {loading ? <GlobalLoadingOverlay /> : null}
     </div>
   )
 }
