@@ -3,22 +3,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-/** Same deployment as `DEFAULT_APPS_SCRIPT_URL` in src/services/sheetApi.ts — used only for dev CORS proxy. */
-const APPS_SCRIPT_MACRO_PATH =
-  '/macros/s/AKfycbxfYRTBY0mORYkffCx3qPUdecy7qvpBz2fyQbbQi3hD_wbiwJbdY8fzgakVP5HBaunLpQ/exec'
-
 // https://vite.dev/config/
 export default defineConfig({
-  server: {
-    proxy: {
-      // Browser calls same-origin URL; Vite forwards to Google (avoids CORS during `npm run dev`).
-      '/apps-script-proxy': {
-        target: 'https://script.google.com',
-        changeOrigin: true,
-        rewrite: () => APPS_SCRIPT_MACRO_PATH,
-      },
-    },
-  },
   plugins: [
     react(),
     tailwindcss(),

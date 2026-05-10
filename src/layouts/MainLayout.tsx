@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Menu, ScanLine } from 'lucide-react'
+import { AlertTriangle, Menu, ScanLine, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from '../components/layout/Sidebar'
 import { useAppStore } from '../store/useAppStore'
@@ -7,6 +7,8 @@ import { Button } from '../components/ui/Button'
 export function MainLayout() {
   const sidebarOpen = useAppStore((s) => s.sidebarOpen)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
+  const apiError = useAppStore((s) => s.error)
+  const clearError = useAppStore((s) => s.clearError)
   const location = useLocation()
   const hideFab = location.pathname.startsWith('/scanner')
 
@@ -74,6 +76,30 @@ export function MainLayout() {
               </div>
             </div>
           </header>
+
+          {apiError ? (
+            <div
+              role="alert"
+              className="mx-auto flex max-w-7xl items-start gap-3 border-b border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100"
+            >
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold">Connection issue</div>
+                <p className="mt-0.5 text-amber-900/90 dark:text-amber-100/90">{apiError}</p>
+                <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/70">
+                  You can keep working from cached data. Fix your Apps Script URL in Settings or try again later.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 rounded-lg p-1 text-amber-800 hover:bg-amber-200/50 dark:text-amber-200 dark:hover:bg-amber-900/50"
+                aria-label="Dismiss"
+                onClick={() => clearError()}
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+          ) : null}
 
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-28 sm:pb-10">
             <Outlet />

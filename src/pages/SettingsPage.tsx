@@ -41,9 +41,10 @@ export function SettingsPage() {
       <GlassCard>
         <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Google Apps Script API</div>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          The app loads and saves data through your Google Apps Script deployment (URL ends with{' '}
-          <span className="font-mono">/exec</span>). A production endpoint is built in; you can paste a different URL to override it
-          for this browser.
+          The app talks to your Web App with <span className="font-semibold">GET query params</span> and{' '}
+          <span className="font-semibold">POST application/x-www-form-urlencoded</span> bodies (no JSON preflight). Deploy the script in{' '}
+          <span className="font-mono">google-apps-script/Code.gs</span> and set <span className="font-mono">SPREADSHEET_ID</span> in Script
+          properties. URL ends with <span className="font-mono">/exec</span>.
         </p>
         <div className="mt-4 space-y-2">
           <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Endpoint</label>
@@ -120,7 +121,7 @@ export function SettingsPage() {
       <ConfirmDialog
         open={resetOpen}
         title="Reset demo data?"
-        message="This will replace your local dataset with the bundled demo inventory. This cannot be undone."
+        message="This replaces the in-browser demo dataset only (your Google Sheet is not cleared). This cannot be undone for local data."
         confirmLabel="Reset"
         onClose={() => setResetOpen(false)}
         onConfirm={() => {
