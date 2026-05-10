@@ -30,7 +30,9 @@ export function ActivityHistoryPage() {
       <div>
         <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Audit trail</div>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Activity history</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Rentals, returns, maintenance, and inventory events.</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          Same row order as your ActivityLogs sheet (top to bottom).
+        </p>
       </div>
 
       <GlassCard>

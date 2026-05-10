@@ -85,7 +85,9 @@ export function ProductsPage() {
         <div>
           <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Inventory</div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Products</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Search, filter, and run rentals without friction.</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Search, filter, and run rentals. List order matches your Products sheet (top to bottom).
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" onClick={() => navigate('/scanner')} leftIcon={<ScanLine className="size-4" />}>
@@ -156,11 +158,20 @@ export function ProductsPage() {
 
       {filtered.length === 0 ? (
         <GlassCard>
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">No matches</div>
-          <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">Try clearing filters or adding a new product.</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+            {products.length === 0 ? 'No products loaded' : 'No matches'}
+          </div>
+          <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            {products.length === 0
+              ? 'Data comes from your Google Sheet. Confirm the Apps Script URL in Settings, then Save & refresh. If you were offline, reconnect and reload.'
+              : 'Try clearing filters or adding a new product.'}
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button type="button" onClick={() => setAddOpen(true)} leftIcon={<Plus className="size-4" />}>
               Add product
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => navigate('/settings')}>
+              Settings
             </Button>
             <Button type="button" variant="secondary" onClick={() => navigate('/scanner')} leftIcon={<ScanLine className="size-4" />}>
               Scan QR

@@ -6,17 +6,31 @@ import type {
   Rental,
   SheetAction,
 } from '../types'
-import { buildSeedData } from '../data/seed'
 import { createId } from '../utils/id'
 import { nowIso } from '../utils/dates'
 
-const STORAGE_KEY = 'stellar-camera-rentals-v1'
+const STORAGE_KEY = 'stellar-camera-rentals-v2'
+const LEGACY_STORAGE_KEY = 'stellar-camera-rentals-v1'
+
+/** Bundled demo used a known serial — skip migrating that dataset so the app stays sheet-only. */
+function isLikelyBundledSeed(data: DashboardPayload): boolean {
+  return data.products?.some((p) => p.serialNumber === 'SN-FX3-10492') ?? false
+}
 
 function loadRaw(): DashboardPayload | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as DashboardPayload
+    const current = localStorage.getItem(STORAGE_KEY)
+    if (current) return JSON.parse(current) as DashboardPayload
+
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY)
+    if (!legacy) return null
+
+    localStorage.removeItem(LEGACY_STORAGE_KEY)
+    const parsed = JSON.parse(legacy) as DashboardPayload
+    if (isLikelyBundledSeed(parsed)) return null
+
+    localStorage.setItem(STORAGE_KEY, legacy)
+    return parsed
   } catch {
     return null
   }
@@ -26,12 +40,19 @@ function saveRaw(data: DashboardPayload): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
+export function emptyDashboard(): DashboardPayload {
+  return {
+    products: [],
+    rentals: [],
+    maintenance: [],
+    activityLogs: [],
+  }
+}
+
 export function loadLocalDataset(): DashboardPayload {
   const existing = loadRaw()
-  if (existing?.products?.length) return existing
-  const seed = buildSeedData()
-  saveRaw(seed)
-  return seed
+  if (existing) return existing
+  return emptyDashboard()
 }
 
 export function saveLocalDataset(data: DashboardPayload): void {
@@ -39,9 +60,9 @@ export function saveLocalDataset(data: DashboardPayload): void {
 }
 
 export function resetLocalDataset(): DashboardPayload {
-  const seed = buildSeedData()
-  saveRaw(seed)
-  return seed
+  const cleared = emptyDashboard()
+  saveRaw(cleared)
+  return cleared
 }
 
 function createActivity(
@@ -65,8 +86,9 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
     case 'fetchAll':
       return next
     case 'resetDemo': {
-      saveRaw(action.payload)
-      return action.payload
+      const cleared = emptyDashboard()
+      saveRaw(cleared)
+      return cleared
     }
     case 'addProduct': {
       const id = createId()
@@ -87,8 +109,8 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
         expectedReturnDate: '',
         lastUpdated: nowIso(),
       }
-      next.products.unshift(p)
-      next.activityLogs.unshift(
+      next.products.push(p)
+      next.activityLogs.push(
         createActivity({
           type: 'product_added',
           productId: p.id,
@@ -124,8 +146,8 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
         returnedAt: null,
         returnKind: null,
       }
-      next.rentals.unshift(rental)
-      next.activityLogs.unshift(
+      next.rentals.push(rental)
+      next.activityLogs.push(
         createActivity({
           type: 'rental_started',
           productId,
@@ -152,7 +174,7 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
       rental.notes = notes || rental.notes
       rental.returnedAt = returnedAt
       rental.returnKind = returnKind
-      next.activityLogs.unshift(
+      next.activityLogs.push(
         createActivity({
           type: 'rental_closed',
           productId,
@@ -182,8 +204,8 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
         createdAt: nowIso(),
         completedAt: null,
       }
-      next.maintenance.unshift(m)
-      next.activityLogs.unshift(
+      next.maintenance.push(m)
+      next.activityLogs.push(
         createActivity({
           type: 'maintenance_started',
           productId,
@@ -205,7 +227,7 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
       m.repairCost = Number(repairCost)
       m.notes = notes || m.notes
       m.completedAt = nowIso()
-      next.activityLogs.unshift(
+      next.activityLogs.push(
         createActivity({
           type: 'maintenance_closed',
           productId,

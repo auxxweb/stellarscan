@@ -76,10 +76,7 @@ export function DashboardPage() {
       maintenance,
     }
 
-    const activeRentals = rentals
-      .filter((r) => r.status === 'active')
-      .slice()
-      .sort((a, b) => new Date(b.rentedAt).getTime() - new Date(a.rentedAt).getTime())
+    const activeRentals = rentals.filter((r) => r.status === 'active')
 
     return { total, available, rented, maintenance, delayedReturns, dist, activeRentals }
   }, [products, rentals])
@@ -172,8 +169,8 @@ export function DashboardPage() {
         </GlassCard>
 
         <GlassCard>
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Recent activity</div>
-          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">Latest operational events</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Activity log</div>
+          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">Same order as your sheet (first rows first)</div>
           <div className="mt-4 space-y-3">
             {activityLogs.slice(0, 6).map((log, idx) => (
               <motion.div
@@ -196,8 +193,8 @@ export function DashboardPage() {
       <GlassCard>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Recent rentals</div>
-            <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">Active contracts, newest first</div>
+            <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Active rentals</div>
+            <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">Same order as your Rentals sheet</div>
           </div>
           <Link to="/rentals" className="text-sm font-semibold text-sky-700 hover:underline dark:text-sky-300">
             View all

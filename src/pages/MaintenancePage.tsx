@@ -9,10 +9,8 @@ export function MaintenancePage() {
   const maintenance = useAppStore((s) => s.maintenance)
 
   const { open, closed } = useMemo(() => {
-    const o = maintenance.filter((m) => m.status === 'open').sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-    const c = maintenance
-      .filter((m) => m.status === 'closed')
-      .sort((a, b) => +new Date(b.completedAt ?? 0) - +new Date(a.completedAt ?? 0))
+    const o = maintenance.filter((m) => m.status === 'open')
+    const c = maintenance.filter((m) => m.status === 'closed')
     return { open: o, closed: c }
   }, [maintenance])
 
@@ -21,7 +19,9 @@ export function MaintenancePage() {
       <div>
         <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Service</div>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Maintenance</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Open repairs and completed work orders.</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          Open and completed tickets in the same order as your Maintenance sheet.
+        </p>
       </div>
 
       <GlassCard>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Product } from '../types'
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
+import { normalizeProductStatus, normalizeQrPayload } from '../utils/productNormalize'
 
 export type ScannerFlowHandlers = {
   onAvailable: (p: Product) => void
@@ -17,27 +18,30 @@ export function useProductScannerFlow(handlers: ScannerFlowHandlers) {
   const handleDecoded = useCallback(
     (text: string) => {
       const products = useAppStore.getState().products
-      const code = text.trim()
+      const code = normalizeQrPayload(text)
       const product =
-        products.find((p) => p.qrCode === code) ?? products.find((p) => p.id === code)
+        products.find((p) => normalizeQrPayload(p.qrCode) === code) ??
+        products.find((p) => p.id === code) ??
+        products.find((p) => normalizeQrPayload(p.qrCode).toLowerCase() === code.toLowerCase())
       if (!product) {
         pushToast('No product matches this QR code.', 'error')
         navigate('/products')
         return
       }
 
-      switch (product.status) {
+      const status = normalizeProductStatus(product.status)
+      const resolved: Product = { ...product, status }
+
+      switch (status) {
         case 'available':
-          handlers.onAvailable(product)
+          handlers.onAvailable(resolved)
           break
         case 'rented':
-          handlers.onReturn(product)
+          handlers.onReturn(resolved)
           break
         case 'maintenance':
-          handlers.onMaintenanceComplete(product)
+          handlers.onMaintenanceComplete(resolved)
           break
-        default:
-          pushToast('Unknown product status.', 'error')
       }
     },
     [handlers, navigate, pushToast],

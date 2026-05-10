@@ -10,8 +10,8 @@ export function RentalsPage() {
   const rentals = useAppStore((s) => s.rentals)
 
   const { active, closed } = useMemo(() => {
-    const a = rentals.filter((r) => r.status === 'active').sort((x, y) => +new Date(y.rentedAt) - +new Date(x.rentedAt))
-    const c = rentals.filter((r) => r.status === 'closed').sort((x, y) => +new Date(y.returnedAt ?? 0) - +new Date(x.returnedAt ?? 0))
+    const a = rentals.filter((r) => r.status === 'active')
+    const c = rentals.filter((r) => r.status === 'closed')
     return { active: a, closed: c }
   }, [rentals])
 
@@ -20,7 +20,9 @@ export function RentalsPage() {
       <div>
         <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Contracts</div>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Rentals</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Active check-outs and closed tickets with return timing.</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          Active and closed rows in the same order as your Rentals sheet.
+        </p>
       </div>
 
       <GlassCard>

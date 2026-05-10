@@ -7,7 +7,7 @@ import {
   DEFAULT_APPS_SCRIPT_URL,
   getSheetEndpointOverride,
   setSheetEndpoint,
-  resetDemoData,
+  clearLocalCache,
 } from '../services/sheetApi'
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
@@ -35,7 +35,7 @@ export function SettingsPage() {
       <div>
         <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Control panel</div>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Settings</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Connect your Apps Script endpoint, tune the UI, and reset demos.</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Connect your Apps Script endpoint and tune the UI. Data comes from your sheet only.</p>
       </div>
 
       <GlassCard>
@@ -97,13 +97,13 @@ export function SettingsPage() {
       </GlassCard>
 
       <GlassCard>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Danger zone</div>
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Local cache</div>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          Reset restores the curated demo inventory locally. If a remote endpoint is configured, a best-effort reset request is sent too.
+          Clear saved data in this browser (your Google Sheet is unchanged). Use this if the UI looks out of sync, then tap Save &amp; refresh.
         </p>
         <div className="mt-4">
           <Button type="button" variant="danger" onClick={() => setResetOpen(true)}>
-            Reset demo data
+            Clear local cache
           </Button>
         </div>
       </GlassCard>
@@ -120,14 +120,15 @@ export function SettingsPage() {
 
       <ConfirmDialog
         open={resetOpen}
-        title="Reset demo data?"
-        message="This replaces the in-browser demo dataset only (your Google Sheet is not cleared). This cannot be undone for local data."
-        confirmLabel="Reset"
+        title="Clear local cache?"
+        message="This removes the saved copy of your sheet data from this browser only. Your Google Sheet is not modified. Reload from Settings afterward."
+        confirmLabel="Clear"
         onClose={() => setResetOpen(false)}
         onConfirm={() => {
-          const data = resetDemoData()
+          const data = clearLocalCache()
           replaceAll(data)
-          pushToast('Demo data reset.', 'success')
+          void hydrate()
+          pushToast('Local cache cleared. Syncing…', 'success')
         }}
       />
     </div>

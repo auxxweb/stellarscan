@@ -92,7 +92,7 @@ export type SheetAction =
   | { action: 'returnProduct'; payload: ReturnProductPayload }
   | { action: 'sendToMaintenance'; payload: MaintenanceStartPayload }
   | { action: 'completeMaintenance'; payload: MaintenanceCompletePayload }
-  | { action: 'resetDemo'; payload: DashboardPayload }
+  | { action: 'resetDemo' }
 
 export interface RentOutPayload {
   productId: string

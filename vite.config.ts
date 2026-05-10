@@ -37,7 +37,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallback: '/offline.html',
+        // SPA: serve the app shell on navigation. Using offline.html here breaks /products refresh on Vercel.
+        navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
       },

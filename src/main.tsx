@@ -13,4 +13,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-registerSW({ immediate: true })
+// Service worker + Workbox break Vite dev navigations (/products, /generator refresh). Register only in production.
+if (import.meta.env.PROD) {
+  registerSW({ immediate: true })
+}

@@ -82,7 +82,12 @@ export async function executeAction(action: SheetAction): Promise<DashboardPaylo
   }
 }
 
-/** Resets the bundled demo dataset locally only (deployed script may not expose `resetDemo`). */
-export function resetDemoData(): DashboardPayload {
+/** Clears cached sheet snapshot in this browser (does not modify Google Sheets). */
+export function clearLocalCache(): DashboardPayload {
   return resetLocalDataset()
+}
+
+/** @deprecated Use clearLocalCache */
+export function resetDemoData(): DashboardPayload {
+  return clearLocalCache()
 }

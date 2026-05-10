@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { Printer, Download } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -6,10 +7,13 @@ import { Button } from '../components/ui/Button'
 import { useAppStore } from '../store/useAppStore'
 
 export function GeneratorPage() {
+  const navigate = useNavigate()
   const products = useAppStore((s) => s.products)
   const printRef = useRef<HTMLDivElement>(null)
 
-  const sorted = useMemo(() => products.slice().sort((a, b) => a.productName.localeCompare(b.productName)), [products])
+  /** Same order as the Products sheet (top row → first in list). */
+  const inSheetOrder = useMemo(() => products.slice(), [products])
+  const empty = inSheetOrder.length === 0
 
   const downloadSvg = (productName: string, svg: SVGSVGElement | null) => {
     if (!svg) return
@@ -30,20 +34,41 @@ export function GeneratorPage() {
         <div>
           <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Print room</div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">QR generator</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Sticker-ready codes with clear product labels.</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Sticker-ready codes with clear labels. Same order as your Products sheet.
+          </p>
         </div>
         <Button
           type="button"
           onClick={() => window.print()}
           leftIcon={<Printer className="size-4" />}
           variant="secondary"
+          disabled={empty}
         >
           Print all
         </Button>
       </div>
 
+      {empty ? (
+        <GlassCard>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">No products to print</div>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            QR codes are built from your inventory. Load data from your Google Sheet (Settings → Save &amp; refresh), or add products on the{' '}
+            <Link to="/products" className="font-semibold text-sky-600 underline-offset-2 hover:underline dark:text-sky-400">
+              Products
+            </Link>{' '}
+            page.
+          </p>
+          <div className="mt-4">
+            <Button type="button" variant="secondary" onClick={() => navigate('/settings')}>
+              Open Settings
+            </Button>
+          </div>
+        </GlassCard>
+      ) : null}
+
       <div ref={printRef} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 print:grid-cols-3">
-        {sorted.map((p) => (
+        {inSheetOrder.map((p) => (
           <GlassCard key={p.id} className="flex flex-col items-center text-center">
             <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-white/10">
               <QRCodeSVG id={`qr-${p.id}`} value={p.qrCode} size={200} />
