@@ -78,10 +78,10 @@ export function ProductTable({
                     {p.status === 'available' ? (
                       <>
                         <Button type="button" className="!px-3 !py-2" onClick={() => onRent(p)} leftIcon={<PackageCheck className="size-4" />}>
-                          Rent
+                          Mark rental
                         </Button>
                         <Button type="button" variant="secondary" className="!px-3 !py-2" onClick={() => onMaintenance(p)} leftIcon={<Wrench className="size-4" />}>
-                          Maint.
+                          Mark maint.
                         </Button>
                         <Button type="button" variant="outline" className="!px-3 !py-2" onClick={() => onScan(p)} leftIcon={<ScanLine className="size-4" />}>
                           Scan
@@ -91,7 +91,7 @@ export function ProductTable({
                     {p.status === 'rented' ? (
                       <>
                         <Button type="button" className="!px-3 !py-2" onClick={() => onReturn(p)} leftIcon={<Undo2 className="size-4" />}>
-                          Return
+                          Close rental
                         </Button>
                         <Button type="button" variant="outline" className="!px-3 !py-2" onClick={() => onScan(p)} leftIcon={<ScanLine className="size-4" />}>
                           Scan
@@ -101,7 +101,7 @@ export function ProductTable({
                     {p.status === 'maintenance' ? (
                       <>
                         <Button type="button" className="!px-3 !py-2" onClick={() => onMaintenanceComplete(p)} leftIcon={<Wrench className="size-4" />}>
-                          Done
+                          Complete maint.
                         </Button>
                         <Button type="button" variant="outline" className="!px-3 !py-2" onClick={() => onScan(p)} leftIcon={<ScanLine className="size-4" />}>
                           Scan

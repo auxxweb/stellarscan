@@ -1,19 +1,40 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Eye, RotateCcw } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
 import { useAppStore } from '../store/useAppStore'
+import { useToastStore } from '../store/useToastStore'
 import { formatDisplayDate } from '../utils/dates'
 import { cn } from '../utils/cn'
+import { ReturnProductModal } from '../components/workflows/ReturnProductModal'
+import { RentalViewModal } from '../components/workflows/RentalViewModal'
+import type { Product, Rental } from '../types'
+import { normalizeEntityId } from '../utils/scannerResolve'
 
 export function RentalsPage() {
   const rentals = useAppStore((s) => s.rentals)
+  const products = useAppStore((s) => s.products)
+  const pushToast = useToastStore((s) => s.push)
+
+  const [returnTarget, setReturnTarget] = useState<{ product: Product; rental: Rental } | null>(null)
+  const [viewRental, setViewRental] = useState<Rental | null>(null)
 
   const { active, closed } = useMemo(() => {
     const a = rentals.filter((r) => r.status === 'active')
     const c = rentals.filter((r) => r.status === 'closed')
     return { active: a, closed: c }
   }, [rentals])
+
+  const openCloseRental = (r: Rental) => {
+    const product = products.find((p) => normalizeEntityId(p.id) === normalizeEntityId(r.productId))
+    if (!product) {
+      pushToast('Product not found for this rental. Refresh data in Settings.', 'error')
+      return
+    }
+    setReturnTarget({ product, rental: r })
+  }
 
   return (
     <div className="space-y-4">
@@ -61,6 +82,19 @@ export function RentalsPage() {
                   <span className="font-semibold text-slate-900 dark:text-slate-100">${r.advanceAmount}</span>
                 </div>
               </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  className="w-full sm:w-auto"
+                  onClick={() => openCloseRental(r)}
+                  leftIcon={<RotateCcw className="size-4" />}
+                >
+                  Close rental
+                </Button>
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setViewRental(r)} leftIcon={<Eye className="size-4" />}>
+                  View
+                </Button>
+              </div>
             </motion.div>
           ))}
         </div>
@@ -77,6 +111,7 @@ export function RentalsPage() {
                 <th className="px-4 py-3">Returned</th>
                 <th className="px-4 py-3">Timing</th>
                 <th className="px-4 py-3 text-right">Bill</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-white/10">
@@ -100,6 +135,17 @@ export function RentalsPage() {
                   <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-50">
                     ${r.finalBill ?? 0}
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="!px-3 !py-2"
+                      onClick={() => setViewRental(r)}
+                      leftIcon={<Eye className="size-4" />}
+                    >
+                      View
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -107,6 +153,14 @@ export function RentalsPage() {
           {closed.length === 0 ? <div className="p-4 text-sm text-slate-600 dark:text-slate-400">No history yet.</div> : null}
         </div>
       </GlassCard>
+
+      <ReturnProductModal
+        open={!!returnTarget}
+        product={returnTarget?.product ?? null}
+        rental={returnTarget?.rental ?? null}
+        onClose={() => setReturnTarget(null)}
+      />
+      <RentalViewModal open={viewRental !== null} rental={viewRental} onClose={() => setViewRental(null)} />
     </div>
   )
 }

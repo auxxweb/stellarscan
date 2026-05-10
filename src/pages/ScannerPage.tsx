@@ -12,6 +12,7 @@ import { MaintenanceCompleteModal } from '../components/workflows/MaintenanceCom
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
 import { playScanSuccessSound, vibrateSuccess } from '../utils/sound'
+import { findActiveRentalForProduct, findOpenMaintenanceForProduct } from '../utils/scannerResolve'
 
 function sanitizeDomId(raw: string): string {
   return `stellar-qr-${raw.replace(/[^a-zA-Z0-9_-]/g, '')}`
@@ -33,12 +34,14 @@ async function pickPreferredCamera(): Promise<string | MediaTrackConstraints> {
 export function ScannerPage() {
   const rentals = useAppStore((s) => s.rentals)
   const maintenance = useAppStore((s) => s.maintenance)
+  const hydrated = useAppStore((s) => s.hydrated)
 
   const readerDomId = sanitizeDomId(useId())
 
   const [last, setLast] = useState<string | null>(null)
   const instanceRef = useRef<Html5Qrcode | null>(null)
   const startingRef = useRef(false)
+  const hadModalOpenRef = useRef(false)
 
   const [decisionProduct, setDecisionProduct] = useState<Product | null>(null)
   const [rentProduct, setRentProduct] = useState<Product | null>(null)
@@ -48,10 +51,24 @@ export function ScannerPage() {
 
   const pushToast = useToastStore((s) => s.push)
 
-  const activeRental =
-    returnProduct ? (rentals.find((r) => r.productId === returnProduct.id && r.status === 'active') ?? null) : null
-  const openMaint =
-    completeProduct ? (maintenance.find((m) => m.productId === completeProduct.id && m.status === 'open') ?? null) : null
+  const activeRental = returnProduct ? findActiveRentalForProduct(rentals, returnProduct.id) : null
+  const openMaint = completeProduct ? findOpenMaintenanceForProduct(maintenance, completeProduct.id) : null
+
+  useEffect(() => {
+    if (!returnProduct || !hydrated) return
+    if (!findActiveRentalForProduct(rentals, returnProduct.id)) {
+      pushToast('No active rental for this product. Refresh data in Settings, or check the Rentals sheet (product id).', 'error')
+      setReturnProduct(null)
+    }
+  }, [returnProduct, rentals, hydrated, pushToast])
+
+  useEffect(() => {
+    if (!completeProduct || !hydrated) return
+    if (!findOpenMaintenanceForProduct(maintenance, completeProduct.id)) {
+      pushToast('No open maintenance ticket for this product. Refresh in Settings, or check the Maintenance sheet.', 'error')
+      setCompleteProduct(null)
+    }
+  }, [completeProduct, maintenance, hydrated, pushToast])
 
   const stopScanner = useCallback(async () => {
     const instance = instanceRef.current
@@ -151,6 +168,16 @@ export function ScannerPage() {
       }
     }
   }, [handleDecoded, pushToast, readerDomId, stopScanner])
+
+  const anyModalOpen = !!(decisionProduct || rentProduct || returnProduct || maintProduct || completeProduct)
+  useEffect(() => {
+    if (hadModalOpenRef.current && !anyModalOpen) {
+      const t = window.setTimeout(() => void startScanner(), 400)
+      hadModalOpenRef.current = false
+      return () => window.clearTimeout(t)
+    }
+    hadModalOpenRef.current = anyModalOpen
+  }, [anyModalOpen, startScanner])
 
   useEffect(() => {
     const t = window.setTimeout(() => {

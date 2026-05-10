@@ -10,7 +10,7 @@ import type {
   Rental,
   SheetAction,
 } from '../types'
-import { normalizeDashboardProducts } from '../utils/productNormalize'
+import { normalizeDashboardPayload } from '../utils/productNormalize'
 
 const REQUEST_TIMEOUT_MS = 45_000
 
@@ -223,7 +223,7 @@ export async function loadFullDashboard(apiUrl: string): Promise<DashboardPayloa
       getMaintenance(apiUrl),
       getActivities(apiUrl),
     ])
-    const payload = normalizeDashboardProducts({ products, rentals, maintenance, activityLogs })
+    const payload = normalizeDashboardPayload({ products, rentals, maintenance, activityLogs })
     console.info(LOG, 'Dashboard fetch OK', {
       endpoint: apiUrl,
       counts: {
@@ -283,7 +283,7 @@ export async function postSheetMutation(
 ): Promise<DashboardPayload | null> {
   const raw = await postFormUrlEncoded(apiUrl, fields)
   const d = extractDashboardFromPostResult(raw)
-  return d ? normalizeDashboardProducts(d) : null
+  return d ? normalizeDashboardPayload(d) : null
 }
 
 export async function executeMutationFromSheetAction(

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import type { Product } from '../types'
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
-import { normalizeProductStatus, normalizeQrPayload } from '../utils/productNormalize'
+import { normalizeProductStatus } from '../utils/productNormalize'
+import { findProductByScan } from '../utils/scannerResolve'
 
 export type ScannerFlowHandlers = {
   onAvailable: (p: Product) => void
@@ -18,11 +19,7 @@ export function useProductScannerFlow(handlers: ScannerFlowHandlers) {
   const handleDecoded = useCallback(
     (text: string) => {
       const products = useAppStore.getState().products
-      const code = normalizeQrPayload(text)
-      const product =
-        products.find((p) => normalizeQrPayload(p.qrCode) === code) ??
-        products.find((p) => p.id === code) ??
-        products.find((p) => normalizeQrPayload(p.qrCode).toLowerCase() === code.toLowerCase())
+      const product = findProductByScan(products, text)
       if (!product) {
         pushToast('No product matches this QR code.', 'error')
         navigate('/products')

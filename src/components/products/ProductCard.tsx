@@ -69,7 +69,7 @@ export function ProductCard({
             {product.status === 'available' ? (
               <>
                 <Button type="button" className="w-full sm:w-auto" onClick={() => onRent(product)} leftIcon={<PackageCheck className="size-4" />}>
-                  Rent out
+                  Mark rental
                 </Button>
                 <Button
                   type="button"
@@ -78,7 +78,7 @@ export function ProductCard({
                   onClick={() => onMaintenance(product)}
                   leftIcon={<Wrench className="size-4" />}
                 >
-                  Maintenance
+                  Mark maintenance
                 </Button>
                 <Button
                   type="button"
@@ -95,7 +95,7 @@ export function ProductCard({
             {product.status === 'rented' ? (
               <>
                 <Button type="button" className="w-full sm:w-auto" onClick={() => onReturn(product)} leftIcon={<Undo2 className="size-4" />}>
-                  Return
+                  Close rental
                 </Button>
                 <Button
                   type="button"
@@ -112,7 +112,7 @@ export function ProductCard({
             {product.status === 'maintenance' ? (
               <>
                 <Button type="button" className="w-full sm:w-auto" onClick={() => onMaintenanceComplete(product)} leftIcon={<Wrench className="size-4" />}>
-                  Mark completed
+                  Complete maintenance
                 </Button>
                 <Button
                   type="button"

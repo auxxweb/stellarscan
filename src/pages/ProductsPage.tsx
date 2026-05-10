@@ -14,6 +14,7 @@ import { MaintenanceStartModal } from '../components/workflows/MaintenanceStartM
 import { MaintenanceCompleteModal } from '../components/workflows/MaintenanceCompleteModal'
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
+import { findActiveRentalForProduct, findOpenMaintenanceForProduct } from '../utils/scannerResolve'
 import type { Product } from '../types'
 import type { ProductStatus } from '../types'
 
@@ -37,27 +38,25 @@ export function ProductsPage() {
 
   const activeRental = useMemo(() => {
     if (!returnProduct) return null
-    return rentals.find((r) => r.productId === returnProduct.id && r.status === 'active') ?? null
+    return findActiveRentalForProduct(rentals, returnProduct.id)
   }, [rentals, returnProduct])
 
   const openMaint = useMemo(() => {
     if (!completeProduct) return null
-    return maintenance.find((m) => m.productId === completeProduct.id && m.status === 'open') ?? null
+    return findOpenMaintenanceForProduct(maintenance, completeProduct.id)
   }, [maintenance, completeProduct])
 
   const requestReturn = (p: Product) => {
-    const r = rentals.find((x) => x.productId === p.id && x.status === 'active')
-    if (!r) {
-      pushToast('No active rental found for this product.', 'error')
+    if (!findActiveRentalForProduct(rentals, p.id)) {
+      pushToast('No active rental found for this product. Check the Rentals sheet (product id).', 'error')
       return
     }
     setReturnProduct(p)
   }
 
   const requestMaintenanceComplete = (p: Product) => {
-    const m = maintenance.find((x) => x.productId === p.id && x.status === 'open')
-    if (!m) {
-      pushToast('No open maintenance ticket found for this product.', 'error')
+    if (!findOpenMaintenanceForProduct(maintenance, p.id)) {
+      pushToast('No open maintenance ticket for this product. Check the Maintenance sheet.', 'error')
       return
     }
     setCompleteProduct(p)

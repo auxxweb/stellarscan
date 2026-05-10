@@ -70,7 +70,7 @@ export function ReturnProductModal({
   return (
     <Modal
       open={open && !!product && !!rental}
-      title="Return product"
+      title="Close rental"
       description={product ? `${product.productName} • ${rental?.customerName ?? ''}` : undefined}
       onClose={() => {
         reset()

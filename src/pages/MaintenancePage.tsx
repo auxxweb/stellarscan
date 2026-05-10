@@ -1,18 +1,39 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Eye, Wrench } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
 import { useAppStore } from '../store/useAppStore'
+import { useToastStore } from '../store/useToastStore'
 import { formatDisplayDate } from '../utils/dates'
+import { MaintenanceCompleteModal } from '../components/workflows/MaintenanceCompleteModal'
+import { MaintenanceViewModal } from '../components/workflows/MaintenanceViewModal'
+import type { MaintenanceRecord, Product } from '../types'
+import { normalizeEntityId } from '../utils/scannerResolve'
 
 export function MaintenancePage() {
   const maintenance = useAppStore((s) => s.maintenance)
+  const products = useAppStore((s) => s.products)
+  const pushToast = useToastStore((s) => s.push)
+
+  const [completeTarget, setCompleteTarget] = useState<{ product: Product; record: MaintenanceRecord } | null>(null)
+  const [viewRecord, setViewRecord] = useState<MaintenanceRecord | null>(null)
 
   const { open, closed } = useMemo(() => {
     const o = maintenance.filter((m) => m.status === 'open')
     const c = maintenance.filter((m) => m.status === 'closed')
     return { open: o, closed: c }
   }, [maintenance])
+
+  const openComplete = (m: MaintenanceRecord) => {
+    const product = products.find((p) => normalizeEntityId(p.id) === normalizeEntityId(m.productId))
+    if (!product) {
+      pushToast('Product not found for this ticket. Refresh data in Settings.', 'error')
+      return
+    }
+    setCompleteTarget({ product, record: m })
+  }
 
   return (
     <div className="space-y-4">
@@ -59,6 +80,19 @@ export function MaintenancePage() {
                   <span className="font-semibold">{formatDisplayDate(m.createdAt)}</span>
                 </div>
               </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  className="w-full sm:w-auto"
+                  onClick={() => openComplete(m)}
+                  leftIcon={<Wrench className="size-4" />}
+                >
+                  Complete maintenance
+                </Button>
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setViewRecord(m)} leftIcon={<Eye className="size-4" />}>
+                  View
+                </Button>
+              </div>
             </motion.div>
           ))}
         </div>
@@ -78,9 +112,14 @@ export function MaintenancePage() {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="font-semibold text-slate-900 dark:text-slate-50">{m.productName}</div>
-                <Badge className="bg-emerald-100 text-emerald-900 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-500/30">
-                  Closed
-                </Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-emerald-100 text-emerald-900 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-500/30">
+                    Closed
+                  </Badge>
+                  <Button type="button" variant="outline" className="!px-3 !py-2" onClick={() => setViewRecord(m)} leftIcon={<Eye className="size-4" />}>
+                    View
+                  </Button>
+                </div>
               </div>
               <div className="mt-2 text-sm text-slate-700 dark:text-slate-200">{m.issue}</div>
               <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-600 dark:text-slate-400">
@@ -95,6 +134,14 @@ export function MaintenancePage() {
           ))}
         </div>
       </GlassCard>
+
+      <MaintenanceCompleteModal
+        open={!!completeTarget}
+        product={completeTarget?.product ?? null}
+        record={completeTarget?.record ?? null}
+        onClose={() => setCompleteTarget(null)}
+      />
+      <MaintenanceViewModal open={viewRecord !== null} record={viewRecord} onClose={() => setViewRecord(null)} />
     </div>
   )
 }
