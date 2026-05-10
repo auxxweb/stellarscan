@@ -52,13 +52,19 @@ export async function refreshAll(): Promise<DashboardPayload> {
   }
 }
 
-export async function executeAction(action: SheetAction): Promise<DashboardPayload> {
-  if (action.action === 'resetDemo') {
-    const next = normalizeDashboardPayload(applySheetAction(loadLocalDataset(), action))
-    saveLocalDataset(next)
-    return next
-  }
+/**
+ * Apply mutation to local cache synchronously (instant UI). Caller updates Zustand immediately.
+ */
+export function applyOptimisticAction(action: SheetAction): DashboardPayload {
+  const next = normalizeDashboardPayload(applySheetAction(loadLocalDataset(), action))
+  saveLocalDataset(next)
+  return next
+}
 
+/**
+ * Push mutation to Google Sheets and return server snapshot. Slow — call in background after optimistic UI.
+ */
+export async function syncMutationToRemote(action: SheetAction): Promise<DashboardPayload> {
   const endpoint = getSheetEndpoint()
 
   try {
@@ -73,15 +79,12 @@ export async function executeAction(action: SheetAction): Promise<DashboardPaylo
     saveLocalDataset(data)
     return data
   } catch (err) {
-    console.error('[StellarScan/sheetApi] executeAction remote failed, applying local fallback', {
+    console.error('[StellarScan/sheetApi] syncMutationToRemote failed', {
       action: action.action,
       endpoint,
       error: err,
     })
-    const current = loadLocalDataset()
-    const next = normalizeDashboardPayload(applySheetAction(current, action))
-    saveLocalDataset(next)
-    return next
+    throw err
   }
 }
 

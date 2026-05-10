@@ -5,6 +5,7 @@ import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { useAppStore } from '../../store/useAppStore'
 import { useToastStore } from '../../store/useToastStore'
+import { parsePositiveMoney } from '../../utils/validation'
 
 export function MaintenanceCompleteModal({
   open,
@@ -21,20 +22,25 @@ export function MaintenanceCompleteModal({
   const loading = useAppStore((s) => s.loading)
   const pushToast = useToastStore((s) => s.push)
 
-  const [repairCost, setRepairCost] = useState('0')
+  const [repairCost, setRepairCost] = useState('')
 
   const reset = () => {
-    setRepairCost('0')
+    setRepairCost('')
   }
 
   const submit = async () => {
     if (!product || !record) return
+    const costCheck = parsePositiveMoney(repairCost, 'Repair cost')
+    if (!costCheck.ok) {
+      pushToast(costCheck.message, 'error')
+      return
+    }
     await runAction({
       action: 'completeMaintenance',
       payload: {
         productId: product.id,
         maintenanceId: record.id,
-        repairCost: Number(repairCost || 0),
+        repairCost: costCheck.value,
         notes: '',
       },
     })

@@ -39,6 +39,11 @@ export function MaintenanceStartModal({
 
   const submit = async () => {
     if (!product) return
+    const given = givenTo.trim()
+    if (!given) {
+      pushToast('Given to is required.', 'error')
+      return
+    }
     const etaIso = isoFromDateOnlyInput(estimatedCompletion)
     if (!etaIso) {
       pushToast('Please choose an estimated completion date.', 'error')
@@ -48,7 +53,7 @@ export function MaintenanceStartModal({
       action: 'sendToMaintenance',
       payload: {
         productId: product.id,
-        givenTo: givenTo.trim(),
+        givenTo: given,
         issue: DEFAULT_MAINTENANCE_ISSUE,
         estimatedCompletion: etaIso,
         notes: '',

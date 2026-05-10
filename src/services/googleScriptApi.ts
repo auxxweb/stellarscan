@@ -402,6 +402,6 @@ export async function executeMutationFromSheetAction(
       })
     }
     case 'resetDemo':
-      return null
+      return postSheetMutation(apiUrl, { action: 'resetDemo' })
   }
 }

@@ -11,6 +11,7 @@ import {
 } from '../services/sheetApi'
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
+import { isValidAppsScriptExecUrl } from '../utils/validation'
 
 export function SettingsPage() {
   const replaceAll = useAppStore((s) => s.replaceAll)
@@ -55,7 +56,12 @@ export function SettingsPage() {
             <Button
               type="button"
               onClick={() => {
-                setSheetEndpoint(endpoint)
+                const url = endpoint.trim()
+                if (!isValidAppsScriptExecUrl(url)) {
+                  pushToast('Enter a valid https Apps Script Web App URL (must include …/exec).', 'error')
+                  return
+                }
+                setSheetEndpoint(url)
                 pushToast('Endpoint saved. Refreshing…', 'success')
                 void hydrate()
               }}

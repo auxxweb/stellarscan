@@ -4,6 +4,7 @@ import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { useAppStore } from '../../store/useAppStore'
 import { useToastStore } from '../../store/useToastStore'
+import { parsePositiveMoney } from '../../utils/validation'
 
 export function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const runAction = useAppStore((s) => s.runAction)
@@ -42,11 +43,12 @@ export function AddProductModal({ open, onClose }: { open: boolean; onClose: () 
       pushToast('Product name and brand are required.', 'error')
       return
     }
-    const price = Number(rentalPrice)
-    if (Number.isNaN(price)) {
-      pushToast('Rental price must be a number.', 'error')
+    const priceCheck = parsePositiveMoney(rentalPrice, 'Rental price per day')
+    if (!priceCheck.ok) {
+      pushToast(priceCheck.message, 'error')
       return
     }
+    const price = priceCheck.value
     await runAction({
       action: 'addProduct',
       payload: {

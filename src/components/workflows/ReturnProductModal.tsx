@@ -8,6 +8,7 @@ import { useToastStore } from '../../store/useToastStore'
 import { computeReturnKind, nowIso } from '../../utils/dates'
 import { Badge } from '../ui/Badge'
 import { cn } from '../../utils/cn'
+import { parsePositiveMoney } from '../../utils/validation'
 
 export function ReturnProductModal({
   open,
@@ -40,11 +41,12 @@ export function ReturnProductModal({
 
   const submit = async () => {
     if (!product || !rental || !preview) return
-    const bill = Number(billAmount || 0)
-    if (Number.isNaN(bill)) {
-      pushToast('Bill amount must be a number.', 'error')
+    const billCheck = parsePositiveMoney(billAmount, 'Bill amount')
+    if (!billCheck.ok) {
+      pushToast(billCheck.message, 'error')
       return
     }
+    const bill = billCheck.value
     await runAction({
       action: 'returnProduct',
       payload: {
