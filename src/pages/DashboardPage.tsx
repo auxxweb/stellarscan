@@ -42,12 +42,12 @@ function StatCard({
       <div className={cn('pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-gradient-to-br blur-2xl', toneRing)} />
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">{title}</div>
-          <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">{value}</div>
-          <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">{hint}</div>
+          <div className="text-xs font-semibold text-slate-600">{title}</div>
+          <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</div>
+          <div className="mt-2 text-xs text-slate-600">{hint}</div>
         </div>
-        <div className="grid size-11 place-items-center rounded-2xl bg-slate-900/5 ring-1 ring-slate-200 dark:bg-white/5 dark:ring-white/10">
-          <Icon className="size-5 text-slate-900 dark:text-slate-100" />
+        <div className="grid size-11 place-items-center rounded-2xl bg-slate-900/5 ring-1 ring-slate-200">
+          <Icon className="size-5 text-slate-900" />
         </div>
       </div>
     </GlassCard>
@@ -97,15 +97,15 @@ export function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Overview</div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Fleet health</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+          <div className="text-xs font-semibold text-sky-700">Overview</div>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Fleet health</h1>
+          <p className="mt-1 max-w-2xl text-sm text-slate-600">
             Live inventory, rental momentum, and operational signals — tuned for fast counter workflows.
           </p>
         </div>
         <Link
           to="/products"
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 dark:bg-white dark:text-slate-950"
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/15"
         >
           Manage products
           <ArrowRight className="size-4" />
@@ -131,8 +131,8 @@ export function DashboardPage() {
         <GlassCard className="lg:col-span-2">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Status distribution</div>
-              <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">Single source of truth per asset</div>
+              <div className="text-sm font-semibold text-slate-900">Status distribution</div>
+              <div className="mt-1 text-xs text-slate-600">Single source of truth per asset</div>
             </div>
           </div>
 
@@ -148,13 +148,13 @@ export function DashboardPage() {
               const pct = Math.round((v / maxDist) * 100)
               return (
                 <div key={key}>
-                  <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
                     <span>{label}</span>
                     <span>
                       {v} ({pct}%)
                     </span>
                   </div>
-                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200/80 dark:bg-white/10">
+                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200/80">
                     <motion.div
                       className={cn('h-full rounded-full', bar)}
                       initial={{ width: 0 }}
@@ -169,8 +169,8 @@ export function DashboardPage() {
         </GlassCard>
 
         <GlassCard>
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Activity log</div>
-          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">Same order as your sheet (first rows first)</div>
+          <div className="text-sm font-semibold text-slate-900">Activity log</div>
+          <div className="mt-1 text-xs text-slate-600">Same order as your sheet (first rows first)</div>
           <div className="mt-4 space-y-3">
             {activityLogs.slice(0, 6).map((log, idx) => (
               <motion.div
@@ -178,14 +178,14 @@ export function DashboardPage() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
-                className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-white/10 dark:bg-white/5"
+                className="rounded-xl border border-slate-200 bg-slate-50/70 p-3"
               >
-                <div className="text-xs font-semibold text-slate-900 dark:text-slate-50">{log.productName}</div>
-                <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">{log.message}</div>
-                <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-500">{formatDisplayDate(log.createdAt)}</div>
+                <div className="text-xs font-semibold text-slate-900">{log.productName}</div>
+                <div className="mt-1 text-xs text-slate-600">{log.message}</div>
+                <div className="mt-2 text-[11px] text-slate-500">{formatDisplayDate(log.createdAt)}</div>
               </motion.div>
             ))}
-            {activityLogs.length === 0 ? <div className="text-sm text-slate-600 dark:text-slate-400">No activity yet.</div> : null}
+            {activityLogs.length === 0 ? <div className="text-sm text-slate-600">No activity yet.</div> : null}
           </div>
         </GlassCard>
       </div>
@@ -193,17 +193,17 @@ export function DashboardPage() {
       <GlassCard>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Active rentals</div>
-            <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">Same order as your Rentals sheet</div>
+            <div className="text-sm font-semibold text-slate-900">Active rentals</div>
+            <div className="mt-1 text-xs text-slate-600">Same order as your Rentals sheet</div>
           </div>
-          <Link to="/rentals" className="text-sm font-semibold text-sky-700 hover:underline dark:text-sky-300">
+          <Link to="/rentals" className="text-sm font-semibold text-sky-700 hover:underline">
             View all
           </Link>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {stats.activeRentals.length === 0 ? (
-            <div className="text-sm text-slate-600 dark:text-slate-400">No active rentals.</div>
+            <div className="text-sm text-slate-600">No active rentals.</div>
           ) : null}
           {stats.activeRentals.map((r, idx) => {
             const p = products.find((x) => x.id === r.productId)
@@ -213,20 +213,20 @@ export function DashboardPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
-                className="flex gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 dark:border-white/10 dark:bg-slate-950/30"
+                className="flex gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3"
               >
                 <img
                   src={p?.image}
                   alt=""
-                  className="size-14 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-white/10"
+                  className="size-14 rounded-xl object-cover ring-1 ring-slate-200"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="truncate font-semibold text-slate-900 dark:text-slate-50">{r.productName}</div>
+                    <div className="truncate font-semibold text-slate-900">{r.productName}</div>
                     {p ? <Badge className={cn(statusBadgeClass(p.status))}>{statusLabel(p.status)}</Badge> : null}
                   </div>
-                  <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">{r.customerName}</div>
-                  <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                  <div className="mt-1 text-xs text-slate-600">{r.customerName}</div>
+                  <div className="mt-2 text-xs text-slate-600">
                     Due {formatDisplayDate(r.expectedReturnDate)}
                   </div>
                 </div>

@@ -93,19 +93,19 @@ export function RentOutModal({
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Customer name
           </label>
           <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Phone
           </label>
           <Input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Expected return
           </label>
           <Input
@@ -115,7 +115,7 @@ export function RentOutModal({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Advance amount
           </label>
           <Input
@@ -125,7 +125,7 @@ export function RentOutModal({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Notes
           </label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />

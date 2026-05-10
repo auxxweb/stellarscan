@@ -32,14 +32,14 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
   return (
     <aside
       className={cn(
-        'flex h-full flex-col border-r border-slate-200 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/50',
+        'flex h-full flex-col border-r border-slate-200 bg-white/85 backdrop-blur-xl',
         mobile ? 'w-[min(88vw,320px)]' : 'w-72',
       )}
     >
       <div className="flex items-center justify-between gap-2 px-4 py-4">
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-slate-900 dark:text-slate-50">Stellar Camera Rentals</div>
-          <div className="truncate text-xs text-slate-600 dark:text-slate-400">Operations console</div>
+          <div className="truncate text-sm font-bold text-slate-900">Stellar Camera Rentals</div>
+          <div className="truncate text-xs text-slate-600">Operations console</div>
         </div>
         {mobile ? (
           <Button type="button" variant="ghost" className="!p-2" onClick={() => setSidebarOpen(false)} aria-label="Close menu">
@@ -59,8 +59,8 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
               cn(
                 'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition',
                 isActive
-                  ? 'bg-gradient-to-r from-sky-500/15 to-indigo-500/15 text-slate-900 ring-1 ring-sky-500/25 dark:text-slate-50'
-                  : 'text-slate-700 hover:bg-slate-900/5 dark:text-slate-200 dark:hover:bg-white/5',
+                  ? 'bg-gradient-to-r from-sky-500/15 to-indigo-500/15 text-slate-900 ring-1 ring-sky-500/25'
+                  : 'text-slate-700 hover:bg-slate-900/5',
               )
             }
           >
@@ -71,8 +71,8 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
                   className={cn(
                     'grid size-9 place-items-center rounded-xl ring-1',
                     isActive
-                      ? 'bg-white text-sky-700 ring-sky-200 dark:bg-slate-950 dark:text-sky-300 dark:ring-white/10'
-                      : 'bg-slate-900/5 ring-slate-200 dark:bg-white/5 dark:ring-white/10',
+                      ? 'bg-white text-sky-700 ring-sky-200'
+                      : 'bg-slate-900/5 ring-slate-200',
                   )}
                 >
                   <it.icon className="size-4" />
@@ -84,7 +84,7 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
         ))}
       </nav>
 
-      <div className="border-t border-slate-200 p-3 text-xs text-slate-600 dark:border-white/10 dark:text-slate-400">
+      <div className="border-t border-slate-200 p-3 text-xs text-slate-600">
         Secure inventory tracking with QR workflows.
       </div>
     </aside>

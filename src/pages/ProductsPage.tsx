@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Filter, Grid3x3, List, Plus, ScanLine, Search } from 'lucide-react'
+import { Filter, Grid3x3, List, Plus, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ProductCard } from '../components/products/ProductCard'
 import { ProductTable } from '../components/products/ProductTable'
@@ -17,6 +17,7 @@ import { useToastStore } from '../store/useToastStore'
 import { findActiveRentalForProduct, findOpenMaintenanceForProduct } from '../utils/scannerResolve'
 import type { Product } from '../types'
 import type { ProductStatus } from '../types'
+import { deriveStellarQrCodeFromProductId } from '../utils/qrCode'
 
 export function ProductsPage() {
   const products = useAppStore((s) => s.products)
@@ -73,7 +74,7 @@ export function ProductsPage() {
       if (status !== 'all' && p.status !== status) return false
       if (category !== 'all' && p.category !== category) return false
       if (!q) return true
-      const hay = `${p.productName} ${p.brand} ${p.modelNumber} ${p.serialNumber} ${p.qrCode}`.toLowerCase()
+      const hay = `${p.productName} ${p.brand} ${p.modelNumber} ${p.serialNumber} ${p.qrCode} ${deriveStellarQrCodeFromProductId(p.id)}`.toLowerCase()
       return hay.includes(q)
     })
   }, [products, query, status, category])
@@ -82,16 +83,13 @@ export function ProductsPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Inventory</div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Products</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <div className="text-xs font-semibold text-sky-700">Inventory</div>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Products</h1>
+          <p className="mt-1 text-sm text-slate-600">
             Search, filter, and run rentals. List order matches your Products sheet (top to bottom).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={() => navigate('/scanner')} leftIcon={<ScanLine className="size-4" />}>
-            Open scanner
-          </Button>
           <Button type="button" onClick={() => setAddOpen(true)} leftIcon={<Plus className="size-4" />}>
             Add product
           </Button>
@@ -109,7 +107,7 @@ export function ProductsPage() {
             <div className="flex items-center gap-2">
               <Filter className="size-4 text-slate-500" />
               <select
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ProductStatus | 'all')}
               >
@@ -119,7 +117,7 @@ export function ProductsPage() {
                 <option value="maintenance">Maintenance</option>
               </select>
               <select
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
@@ -157,10 +155,10 @@ export function ProductsPage() {
 
       {filtered.length === 0 ? (
         <GlassCard>
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+          <div className="text-sm font-semibold text-slate-900">
             {products.length === 0 ? 'No products loaded' : 'No matches'}
           </div>
-          <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <div className="mt-1 text-sm text-slate-600">
             {products.length === 0
               ? 'Data comes from your Google Sheet. Confirm the Apps Script URL in Settings, then Save & refresh. If you were offline, reconnect and reload.'
               : 'Try clearing filters or adding a new product.'}
@@ -171,9 +169,6 @@ export function ProductsPage() {
             </Button>
             <Button type="button" variant="secondary" onClick={() => navigate('/settings')}>
               Settings
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => navigate('/scanner')} leftIcon={<ScanLine className="size-4" />}>
-              Scan QR
             </Button>
           </div>
         </GlassCard>
@@ -188,7 +183,6 @@ export function ProductsPage() {
               onReturn={(x) => requestReturn(x)}
               onMaintenance={(x) => setMaintProduct(x)}
               onMaintenanceComplete={(x) => requestMaintenanceComplete(x)}
-              onScan={() => navigate('/scanner')}
             />
           ))}
         </motion.div>
@@ -199,7 +193,6 @@ export function ProductsPage() {
           onReturn={(x) => requestReturn(x)}
           onMaintenance={(x) => setMaintProduct(x)}
           onMaintenanceComplete={(x) => requestMaintenanceComplete(x)}
-          onScan={() => navigate('/scanner')}
         />
       )}
 

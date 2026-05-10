@@ -3,6 +3,7 @@ import type { DashboardPayload } from '../types'
 import { refreshAll, executeAction } from '../services/sheetApi'
 import { loadLocalDataset } from '../services/localStore'
 import type { SheetAction } from '../types'
+import { normalizeDashboardPayload } from '../utils/productNormalize'
 import { useToastStore } from './useToastStore'
 
 interface AppState extends DashboardPayload {
@@ -10,22 +11,12 @@ interface AppState extends DashboardPayload {
   loading: boolean
   error: string | null
   sidebarOpen: boolean
-  theme: 'dark' | 'light'
   setSidebarOpen: (open: boolean) => void
   toggleSidebar: () => void
-  setTheme: (t: 'dark' | 'light') => void
   hydrate: () => Promise<void>
   runAction: (action: SheetAction) => Promise<void>
   replaceAll: (data: DashboardPayload) => void
   clearError: () => void
-}
-
-const THEME_KEY = 'stellar-theme'
-
-function readTheme(): 'dark' | 'light' {
-  const v = localStorage.getItem(THEME_KEY)
-  if (v === 'light' || v === 'dark') return v
-  return 'dark'
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -37,24 +28,19 @@ export const useAppStore = create<AppState>((set) => ({
   loading: false,
   error: null,
   sidebarOpen: false,
-  theme: readTheme(),
 
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 
-  setTheme: (t) => {
-    localStorage.setItem(THEME_KEY, t)
-    document.documentElement.classList.toggle('dark', t === 'dark')
-    set({ theme: t })
-  },
-
-  replaceAll: (data) =>
+  replaceAll: (data) => {
+    const n = normalizeDashboardPayload(data)
     set({
-      products: data.products,
-      rentals: data.rentals,
-      maintenance: data.maintenance,
-      activityLogs: data.activityLogs,
-    }),
+      products: n.products,
+      rentals: n.rentals,
+      maintenance: n.maintenance,
+      activityLogs: n.activityLogs,
+    })
+  },
 
   hydrate: async () => {
     set({ loading: true, error: null })
@@ -72,7 +58,7 @@ export const useAppStore = create<AppState>((set) => ({
     } catch (e) {
       console.error('[StellarScan] hydrate failed — using cached local data if available', e)
       const msg = e instanceof Error ? e.message : 'Failed to load data'
-      const fallback = loadLocalDataset()
+      const fallback = normalizeDashboardPayload(loadLocalDataset())
       useToastStore.getState().push(`${msg} Showing cached data.`, 'error')
       set({
         products: fallback.products,

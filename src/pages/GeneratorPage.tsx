@@ -5,6 +5,7 @@ import { Printer, Download } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Button } from '../components/ui/Button'
 import { useAppStore } from '../store/useAppStore'
+import { deriveStellarQrCodeFromProductId } from '../utils/qrCode'
 
 export function GeneratorPage() {
   const navigate = useNavigate()
@@ -32,9 +33,9 @@ export function GeneratorPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Print room</div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">QR generator</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <div className="text-xs font-semibold text-sky-700">Print room</div>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">QR generator</h1>
+          <p className="mt-1 text-sm text-slate-600">
             Sticker-ready codes with clear labels. Same order as your Products sheet.
           </p>
         </div>
@@ -51,10 +52,10 @@ export function GeneratorPage() {
 
       {empty ? (
         <GlassCard>
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">No products to print</div>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          <div className="text-sm font-semibold text-slate-900">No products to print</div>
+          <p className="mt-2 text-sm text-slate-600">
             QR codes are built from your inventory. Load data from your Google Sheet (Settings → Save &amp; refresh), or add products on the{' '}
-            <Link to="/products" className="font-semibold text-sky-600 underline-offset-2 hover:underline dark:text-sky-400">
+            <Link to="/products" className="font-semibold text-sky-600 underline-offset-2 hover:underline">
               Products
             </Link>{' '}
             page.
@@ -68,16 +69,26 @@ export function GeneratorPage() {
       ) : null}
 
       <div ref={printRef} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 print:grid-cols-3">
-        {inSheetOrder.map((p) => (
+        {inSheetOrder.map((p) => {
+          const scanPayload = deriveStellarQrCodeFromProductId(p.id)
+          return (
           <GlassCard key={p.id} className="flex flex-col items-center text-center">
-            <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-white/10">
-              <QRCodeSVG id={`qr-${p.id}`} value={p.qrCode} size={200} />
+            <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+              <QRCodeSVG
+                id={`qr-${p.id}`}
+                value={scanPayload}
+                size={200}
+                level="M"
+                fgColor="#0f172a"
+                bgColor="#ffffff"
+                title={`QR for ${p.productName}`}
+              />
             </div>
-            <div className="mt-3 text-sm font-bold text-slate-900 dark:text-slate-50">{p.productName}</div>
-            <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            <div className="mt-3 text-sm font-bold text-slate-900">{p.productName}</div>
+            <div className="mt-1 text-xs text-slate-600">
               {p.brand} • {p.category}
             </div>
-            <div className="mt-2 font-mono text-xs text-slate-700 dark:text-slate-300">{p.qrCode}</div>
+            <div className="mt-2 font-mono text-xs text-slate-700">{scanPayload}</div>
             <div className="mt-4 flex flex-wrap justify-center gap-2 print:hidden">
               <Button
                 type="button"
@@ -90,7 +101,8 @@ export function GeneratorPage() {
               </Button>
             </div>
           </GlassCard>
-        ))}
+          )
+        })}
       </div>
 
       <style>{`

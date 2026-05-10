@@ -4,8 +4,12 @@ import './index.css'
 import App from './App.tsx'
 import { registerSW } from 'virtual:pwa-register'
 
-const t = localStorage.getItem('stellar-theme')
-document.documentElement.classList.toggle('dark', t !== 'light')
+try {
+  localStorage.removeItem('stellar-theme')
+} catch {
+  /* ignore */
+}
+document.documentElement.classList.remove('dark')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

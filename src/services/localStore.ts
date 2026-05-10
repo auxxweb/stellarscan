@@ -8,6 +8,7 @@ import type {
 } from '../types'
 import { createId } from '../utils/id'
 import { nowIso } from '../utils/dates'
+import { deriveStellarQrCodeFromProductId } from '../utils/qrCode'
 
 const STORAGE_KEY = 'stellar-camera-rentals-v2'
 const LEGACY_STORAGE_KEY = 'stellar-camera-rentals-v1'
@@ -92,7 +93,7 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
     }
     case 'addProduct': {
       const id = createId()
-      const qrCode = `STELLAR-${id.replace(/-/g, '').slice(0, 10).toUpperCase()}`
+      const qrCode = deriveStellarQrCodeFromProductId(id)
       const p: Product = {
         id,
         qrCode,

@@ -8,6 +8,7 @@ import type {
   RentalRecordStatus,
   ReturnKind,
 } from '../types'
+import { deriveStellarQrCodeFromProductId } from './qrCode'
 
 const LOG = '[StellarScan]'
 
@@ -63,9 +64,11 @@ export function normalizeProductStatus(raw: unknown): ProductStatus {
 }
 
 export function normalizeProduct(p: Product): Product {
+  // Single canonical payload: STELLAR- + first 10 chars of id without hyphens (matches Apps Script addProduct).
+  // Sheet qr column may differ; scanner + generator always use this so stickers match the row id.
   return {
     ...p,
-    qrCode: normalizeQrPayload(p.qrCode),
+    qrCode: deriveStellarQrCodeFromProductId(p.id),
     status: normalizeProductStatus(p.status),
   }
 }

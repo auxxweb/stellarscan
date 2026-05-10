@@ -3,6 +3,7 @@
  * All remote I/O uses fetch + URLSearchParams (see googleScriptApi.ts).
  */
 import type { DashboardPayload, SheetAction } from '../types'
+import { normalizeDashboardPayload } from '../utils/productNormalize'
 import { applySheetAction, loadLocalDataset, resetLocalDataset, saveLocalDataset } from './localStore'
 import {
   executeMutationFromSheetAction,
@@ -53,7 +54,7 @@ export async function refreshAll(): Promise<DashboardPayload> {
 
 export async function executeAction(action: SheetAction): Promise<DashboardPayload> {
   if (action.action === 'resetDemo') {
-    const next = applySheetAction(loadLocalDataset(), action)
+    const next = normalizeDashboardPayload(applySheetAction(loadLocalDataset(), action))
     saveLocalDataset(next)
     return next
   }
@@ -78,7 +79,9 @@ export async function executeAction(action: SheetAction): Promise<DashboardPaylo
       error: err,
     })
     const current = loadLocalDataset()
-    return applySheetAction(current, action)
+    const next = normalizeDashboardPayload(applySheetAction(current, action))
+    saveLocalDataset(next)
+    return next
   }
 }
 

@@ -15,7 +15,7 @@ export function ToastStack() {
             initial={{ opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            className="pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-900/95"
+            className="pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur"
           >
             <div className="mt-0.5">
               {t.kind === 'success' ? (
@@ -26,10 +26,10 @@ export function ToastStack() {
                 <Info className="size-5 text-sky-500" />
               )}
             </div>
-            <div className="flex-1 text-sm text-slate-800 dark:text-slate-100">{t.message}</div>
+            <div className="flex-1 text-sm text-slate-800">{t.message}</div>
             <button
               type="button"
-              className="rounded-lg p-1 text-slate-500 hover:bg-slate-900/5 dark:hover:bg-white/10"
+              className="rounded-lg p-1 text-slate-500 hover:bg-slate-900/5"
               onClick={() => dismiss(t.id)}
               aria-label="Dismiss"
             >

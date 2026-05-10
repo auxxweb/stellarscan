@@ -6,11 +6,6 @@ import { useAppStore } from './store/useAppStore'
 
 export default function App() {
   const hydrate = useAppStore((s) => s.hydrate)
-  const theme = useAppStore((s) => s.theme)
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-  }, [theme])
 
   useEffect(() => {
     void hydrate()

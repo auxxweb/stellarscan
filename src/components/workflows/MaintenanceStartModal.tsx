@@ -90,17 +90,17 @@ export function MaintenanceStartModal({
     >
       <div className="grid gap-3">
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Given to</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Given to</label>
           <Input value={givenTo} onChange={(e) => setGivenTo(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Issue description
           </label>
           <Textarea value={issue} onChange={(e) => setIssue(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Estimated completion
           </label>
           <Input
@@ -110,7 +110,7 @@ export function MaintenanceStartModal({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Notes</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Notes</label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       </div>

@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button'
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
 import { formatDisplayDate } from '../utils/dates'
+import { formatInr } from '../utils/money'
 import { cn } from '../utils/cn'
 import { ReturnProductModal } from '../components/workflows/ReturnProductModal'
 import { RentalViewModal } from '../components/workflows/RentalViewModal'
@@ -39,47 +40,47 @@ export function RentalsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Contracts</div>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Rentals</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <div className="text-xs font-semibold text-sky-700">Contracts</div>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Rentals</h1>
+        <p className="mt-1 text-sm text-slate-600">
           Active and closed rows in the same order as your Rentals sheet.
         </p>
       </div>
 
       <GlassCard>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Active rentals</div>
+        <div className="text-sm font-semibold text-slate-900">Active rentals</div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {active.length === 0 ? <div className="text-sm text-slate-600 dark:text-slate-400">No active rentals.</div> : null}
+          {active.length === 0 ? <div className="text-sm text-slate-600">No active rentals.</div> : null}
           {active.map((r, idx) => (
             <motion.div
               key={r.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.03 }}
-              className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5"
+              className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate font-semibold text-slate-900 dark:text-slate-50">{r.productName}</div>
-                  <div className="mt-1 text-sm text-slate-700 dark:text-slate-200">{r.customerName}</div>
-                  <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">{r.phone}</div>
+                  <div className="truncate font-semibold text-slate-900">{r.productName}</div>
+                  <div className="mt-1 text-sm text-slate-700">{r.customerName}</div>
+                  <div className="mt-1 text-xs text-slate-600">{r.phone}</div>
                 </div>
-                <Badge className="bg-emerald-100 text-emerald-900 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-500/30">
+                <Badge className="bg-emerald-100 text-emerald-900 ring-emerald-200">
                   Active
                 </Badge>
               </div>
-              <div className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-400">
+              <div className="mt-3 grid gap-2 text-xs text-slate-600">
                 <div className="flex justify-between gap-3">
                   <span>Rented</span>
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{formatDisplayDate(r.rentedAt)}</span>
+                  <span className="font-semibold text-slate-900">{formatDisplayDate(r.rentedAt)}</span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span>Due</span>
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{formatDisplayDate(r.expectedReturnDate)}</span>
+                  <span className="font-semibold text-slate-900">{formatDisplayDate(r.expectedReturnDate)}</span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span>Advance</span>
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">${r.advanceAmount}</span>
+                  <span className="font-semibold text-slate-900">{formatInr(r.advanceAmount)}</span>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -101,10 +102,10 @@ export function RentalsPage() {
       </GlassCard>
 
       <GlassCard>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Closed rentals</div>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10">
+        <div className="text-sm font-semibold text-slate-900">Closed rentals</div>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
           <table className="w-full border-collapse text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-white/5 dark:text-slate-300">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="px-4 py-3">Product</th>
                 <th className="px-4 py-3">Customer</th>
@@ -114,26 +115,26 @@ export function RentalsPage() {
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-white/10">
+            <tbody className="divide-y divide-slate-200">
               {closed.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50/70 dark:hover:bg-white/5">
-                  <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-50">{r.productName}</td>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{r.customerName}</td>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{formatDisplayDate(r.returnedAt ?? '')}</td>
+                <tr key={r.id} className="hover:bg-slate-50/70">
+                  <td className="px-4 py-3 font-semibold text-slate-900">{r.productName}</td>
+                  <td className="px-4 py-3 text-slate-700">{r.customerName}</td>
+                  <td className="px-4 py-3 text-slate-700">{formatDisplayDate(r.returnedAt ?? '')}</td>
                   <td className="px-4 py-3">
                     <Badge
                       className={cn(
-                        r.returnKind === 'delayed' && 'bg-rose-100 text-rose-900 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200',
-                        r.returnKind === 'early' && 'bg-sky-100 text-sky-900 ring-sky-200 dark:bg-sky-500/15 dark:text-sky-200',
+                        r.returnKind === 'delayed' && 'bg-rose-100 text-rose-900 ring-rose-200',
+                        r.returnKind === 'early' && 'bg-sky-100 text-sky-900 ring-sky-200',
                         r.returnKind === 'on_time' &&
-                          'bg-emerald-100 text-emerald-900 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200',
+                          'bg-emerald-100 text-emerald-900 ring-emerald-200',
                       )}
                     >
                       {(r.returnKind ?? 'closed').replace('_', ' ')}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-50">
-                    ${r.finalBill ?? 0}
+                  <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                    {formatInr(r.finalBill)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Button
@@ -150,7 +151,7 @@ export function RentalsPage() {
               ))}
             </tbody>
           </table>
-          {closed.length === 0 ? <div className="p-4 text-sm text-slate-600 dark:text-slate-400">No history yet.</div> : null}
+          {closed.length === 0 ? <div className="p-4 text-sm text-slate-600">No history yet.</div> : null}
         </div>
       </GlassCard>
 

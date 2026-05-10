@@ -1,5 +1,6 @@
 import type { MaintenanceRecord, Product, Rental } from '../types'
 import { normalizeQrPayload } from './productNormalize'
+import { deriveStellarQrCodeFromProductId } from './qrCode'
 
 /** Compare sheet ids (trim + lowercase; UUIDs and Google ids are case-insensitive). */
 export function normalizeEntityId(raw: unknown): string {
@@ -30,7 +31,8 @@ export function extractQrProductCode(text: string): string {
     /* invalid URL — use raw */
   }
 
-  const stellar = raw.match(/\b(STELLAR-[A-Z0-9]+)\b/i)
+  // Allow hyphenated payloads like STELLAR-STLR-CAM-001 (old \b(STELLAR-[A-Z0-9]+)\b stopped at first hyphen).
+  const stellar = raw.match(/\b(STELLAR-[A-Z0-9]+(?:-[A-Z0-9]+)*)\b/i)
   if (stellar) return stellar[1]!.toUpperCase()
 
   return raw
@@ -38,8 +40,9 @@ export function extractQrProductCode(text: string): string {
 
 export function findProductByScan(products: Product[], scannedText: string): Product | undefined {
   const primary = extractQrProductCode(scannedText)
+  const rawNorm = normalizeQrPayload(scannedText)
   const variants = Array.from(
-    new Set([primary, normalizeQrPayload(scannedText)].filter((v) => v.length > 0)),
+    new Set([primary, rawNorm].filter((v) => v.length > 0)),
   )
 
   for (const code of variants) {
@@ -51,6 +54,14 @@ export function findProductByScan(products: Product[], scannedText: string): Pro
     const byId = products.find((p) => normalizeEntityId(p.id) === normalizeEntityId(c))
     if (byId) return byId
   }
+
+  // Generator / stickers use STELLAR-{compactId}; sheet qrCode may still be a legacy value.
+  const upperVariants = variants.map((v) => normalizeQrPayload(v).toUpperCase())
+  for (const p of products) {
+    const derived = deriveStellarQrCodeFromProductId(p.id).toUpperCase()
+    if (upperVariants.some((v) => v === derived)) return p
+  }
+
   return undefined
 }
 

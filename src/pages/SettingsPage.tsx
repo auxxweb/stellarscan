@@ -13,8 +13,6 @@ import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
 
 export function SettingsPage() {
-  const theme = useAppStore((s) => s.theme)
-  const setTheme = useAppStore((s) => s.setTheme)
   const replaceAll = useAppStore((s) => s.replaceAll)
   const hydrate = useAppStore((s) => s.hydrate)
   const pushToast = useToastStore((s) => s.push)
@@ -33,21 +31,21 @@ export function SettingsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Control panel</div>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Settings</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Connect your Apps Script endpoint and tune the UI. Data comes from your sheet only.</p>
+        <div className="text-xs font-semibold text-sky-700">Control panel</div>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Settings</h1>
+        <p className="mt-1 text-sm text-slate-600">Connect your Apps Script endpoint. Data comes from your sheet only.</p>
       </div>
 
       <GlassCard>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Google Apps Script API</div>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <div className="text-sm font-semibold text-slate-900">Google Apps Script API</div>
+        <p className="mt-2 text-sm text-slate-600">
           The app talks to your Web App with <span className="font-semibold">GET query params</span> and{' '}
           <span className="font-semibold">POST application/x-www-form-urlencoded</span> bodies (no JSON preflight). Deploy the script in{' '}
           <span className="font-mono">google-apps-script/Code.gs</span> and set <span className="font-mono">SPREADSHEET_ID</span> in Script
           properties. URL ends with <span className="font-mono">/exec</span>.
         </p>
         <div className="mt-4 space-y-2">
-          <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Endpoint</label>
+          <label className="text-xs font-semibold text-slate-600">Endpoint</label>
           <Input
             value={endpoint}
             onChange={(e) => setEndpoint(e.target.value)}
@@ -77,28 +75,15 @@ export function SettingsPage() {
               Use default endpoint
             </Button>
           </div>
-          <div className="text-xs text-slate-600 dark:text-slate-400">
-            Mode: <span className="font-semibold text-slate-900 dark:text-slate-100">{mode}</span>
+          <div className="text-xs text-slate-600">
+            Mode: <span className="font-semibold text-slate-900">{mode}</span>
           </div>
         </div>
       </GlassCard>
 
       <GlassCard>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Appearance</div>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Switch between a bright desk mode and a cinematic dark console.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="button" variant={theme === 'dark' ? 'primary' : 'secondary'} onClick={() => setTheme('dark')}>
-            Dark
-          </Button>
-          <Button type="button" variant={theme === 'light' ? 'primary' : 'secondary'} onClick={() => setTheme('light')}>
-            Light
-          </Button>
-        </div>
-      </GlassCard>
-
-      <GlassCard>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">Local cache</div>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <div className="text-sm font-semibold text-slate-900">Local cache</div>
+        <p className="mt-2 text-sm text-slate-600">
           Clear saved data in this browser (your Google Sheet is unchanged). Use this if the UI looks out of sync, then tap Save &amp; refresh.
         </p>
         <div className="mt-4">
@@ -109,12 +94,12 @@ export function SettingsPage() {
       </GlassCard>
 
       <GlassCard>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">App info</div>
-        <div className="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-200">
+        <div className="text-sm font-semibold text-slate-900">App info</div>
+        <div className="mt-3 space-y-2 text-sm text-slate-700">
           <div>
             <span className="font-semibold">Stellar Camera Rentals</span> — v1.0.0
           </div>
-          <div className="text-slate-600 dark:text-slate-400">Installable PWA • QR-first workflows • Sheet-ready architecture</div>
+          <div className="text-slate-600">Installable PWA • QR-first workflows • Sheet-ready architecture</div>
         </div>
       </GlassCard>
 

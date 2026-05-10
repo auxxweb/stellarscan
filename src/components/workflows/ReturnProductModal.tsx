@@ -96,36 +96,36 @@ export function ReturnProductModal({
       }
     >
       <div className="grid gap-3">
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/5">
-          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Return timing</span>
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <span className="text-xs font-semibold text-slate-600">Return timing</span>
           <Badge
             className={cn(
-              preview?.kind === 'delayed' && 'bg-rose-100 text-rose-800 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200',
-              preview?.kind === 'early' && 'bg-sky-100 text-sky-900 ring-sky-200 dark:bg-sky-500/15 dark:text-sky-200',
+              preview?.kind === 'delayed' && 'bg-rose-100 text-rose-800 ring-rose-200',
+              preview?.kind === 'early' && 'bg-sky-100 text-sky-900 ring-sky-200',
               preview?.kind === 'on_time' &&
-                'bg-emerald-100 text-emerald-900 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200',
+                'bg-emerald-100 text-emerald-900 ring-emerald-200',
             )}
           >
             {preview?.label ?? '—'}
           </Badge>
-          <span className="text-xs text-slate-600 dark:text-slate-400">
+          <span className="text-xs text-slate-600">
             Due {rental ? formatDisplayDate(rental.expectedReturnDate) : '—'}
           </span>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Final bill
           </label>
           <Input inputMode="decimal" value={finalBill} onChange={(e) => setFinalBill(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Extra charges
           </label>
           <Input inputMode="decimal" value={extraCharges} onChange={(e) => setExtraCharges(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Notes</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Notes</label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       </div>

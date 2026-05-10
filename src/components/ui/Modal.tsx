@@ -67,16 +67,13 @@ export function Modal({
             transition={{ type: 'spring', stiffness: 280, damping: 28 }}
             className={cn(
               'relative z-[81] w-full rounded-t-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:rounded-3xl',
-              'dark:border-white/10 dark:bg-slate-900/95',
               width,
             )}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{title}</h2>
-                {description ? (
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{description}</p>
-                ) : null}
+                <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+                {description ? <p className="mt-1 text-sm text-slate-600">{description}</p> : null}
               </div>
               <Button
                 type="button"

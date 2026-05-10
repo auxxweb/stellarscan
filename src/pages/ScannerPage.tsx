@@ -192,15 +192,15 @@ export function ScannerPage() {
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-xs font-semibold text-sky-700 dark:text-sky-300">Field tool</div>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">QR scanner</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Full camera view — nothing dimmed over the QR.</p>
+        <div className="text-xs font-semibold text-sky-700">Field tool</div>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">QR scanner</h1>
+        <p className="mt-1 text-sm text-slate-600">Full camera view — nothing dimmed over the QR.</p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-lg dark:border-white/15">
-        <div className="relative w-full">
-          <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-white/15 backdrop-blur-sm sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
-            <ShieldCheck className="size-3.5 text-emerald-300 sm:size-4" aria-hidden />
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-lg shadow-slate-900/5">
+        <div className="relative w-full bg-slate-900">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-800 ring-1 ring-slate-200/80 backdrop-blur-sm sm:left-4 sm:top-4 sm:px-3 sm:text-xs">
+            <ShieldCheck className="size-3.5 text-emerald-600 sm:size-4" aria-hidden />
             Live camera
           </div>
 
@@ -210,11 +210,11 @@ export function ScannerPage() {
           />
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-white/10 bg-slate-950/95 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-slate-200">
+        <div className="flex flex-col gap-3 border-t border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-slate-600">
             {last ? (
               <span>
-                Last scan: <span className="font-semibold text-white">{last}</span>
+                Last scan: <span className="font-semibold text-slate-900">{last}</span>
               </span>
             ) : (
               <span>Show the whole QR in frame. Tap Restart if the preview is blank.</span>

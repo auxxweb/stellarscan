@@ -13,11 +13,11 @@ export function MainLayout() {
   const hideFab = location.pathname.startsWith('/scanner')
 
   return (
-    <div className="min-h-dvh bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-dvh bg-slate-100 text-slate-900">
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -left-40 -top-40 size-[520px] rounded-full bg-sky-500/15 blur-3xl dark:bg-sky-500/20" />
-        <div className="absolute -right-40 top-40 size-[520px] rounded-full bg-indigo-500/15 blur-3xl dark:bg-indigo-500/20" />
-        <div className="absolute bottom-[-200px] left-1/2 size-[680px] -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl dark:bg-fuchsia-500/15" />
+        <div className="absolute -left-40 -top-40 size-[520px] rounded-full bg-sky-500/15 blur-3xl" />
+        <div className="absolute -right-40 top-40 size-[520px] rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="absolute bottom-[-200px] left-1/2 size-[680px] -translate-x-1/2 rounded-full bg-fuchsia-500/10 blur-3xl" />
       </div>
 
       <div className="flex min-h-dvh">
@@ -55,15 +55,15 @@ export function MainLayout() {
         </AnimatePresence>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/50">
+          <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
               <div className="flex items-center gap-2">
                 <Button type="button" variant="secondary" className="!p-2 lg:hidden" onClick={() => toggleSidebar()} aria-label="Open menu">
                   <Menu className="size-5" />
                 </Button>
                 <div className="hidden sm:block">
-                  <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Stellar Camera Rentals</div>
-                  <div className="text-sm font-bold text-slate-900 dark:text-slate-50">Command center</div>
+                  <div className="text-xs font-semibold text-slate-600">Stellar Camera Rentals</div>
+                  <div className="text-sm font-bold text-slate-900">Command center</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -80,19 +80,19 @@ export function MainLayout() {
           {apiError ? (
             <div
               role="alert"
-              className="mx-auto flex max-w-7xl items-start gap-3 border-b border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100"
+              className="mx-auto flex max-w-7xl items-start gap-3 border-b border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950"
             >
-              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" aria-hidden />
               <div className="min-w-0 flex-1">
                 <div className="font-semibold">Connection issue</div>
-                <p className="mt-0.5 text-amber-900/90 dark:text-amber-100/90">{apiError}</p>
-                <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/70">
+                <p className="mt-0.5 text-amber-900/90">{apiError}</p>
+                <p className="mt-1 text-xs text-amber-800/80">
                   You can keep working from cached data. Fix your Apps Script URL in Settings or try again later.
                 </p>
               </div>
               <button
                 type="button"
-                className="shrink-0 rounded-lg p-1 text-amber-800 hover:bg-amber-200/50 dark:text-amber-200 dark:hover:bg-amber-900/50"
+                className="shrink-0 rounded-lg p-1 text-amber-800 hover:bg-amber-200/50"
                 aria-label="Dismiss"
                 onClick={() => clearError()}
               >

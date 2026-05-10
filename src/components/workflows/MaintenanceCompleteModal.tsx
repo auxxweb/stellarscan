@@ -75,13 +75,13 @@ export function MaintenanceCompleteModal({
     >
       <div className="grid gap-3">
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Repair cost
           </label>
           <Input inputMode="decimal" value={repairCost} onChange={(e) => setRepairCost(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Completion notes
           </label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />

@@ -97,44 +97,44 @@ export function AddProductModal({ open, onClose }: { open: boolean; onClose: () 
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Product name
           </label>
           <Input value={productName} onChange={(e) => setProductName(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Category</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Category</label>
           <Input value={category} onChange={(e) => setCategory(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Brand</label>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Brand</label>
           <Input value={brand} onChange={(e) => setBrand(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Model number
           </label>
           <Input value={modelNumber} onChange={(e) => setModelNumber(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Serial number
           </label>
           <Input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Rental price / day
           </label>
           <Input inputMode="decimal" value={rentalPrice} onChange={(e) => setRentalPrice(e.target.value)} />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
             Image upload
           </label>
           <Input type="file" accept="image/*" onChange={(e) => void onFile(e.target.files?.[0] ?? null)} />
           {image ? (
-            <img src={image} alt="" className="mt-2 h-28 w-full rounded-xl object-cover ring-1 ring-slate-200 dark:ring-white/10" />
+            <img src={image} alt="" className="mt-2 h-28 w-full rounded-xl object-cover ring-1 ring-slate-200" />
           ) : null}
         </div>
       </div>

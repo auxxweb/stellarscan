@@ -17,8 +17,7 @@ export function GlassCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay }}
       className={cn(
-        'rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-xl',
-        'dark:border-white/10 dark:bg-white/5 dark:shadow-[var(--shadow-glow)]',
+        'rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-xl',
         className,
       )}
     >
