@@ -33,17 +33,48 @@ function pick(raw: Record<string, unknown>, keys: string[]): unknown {
   return undefined
 }
 
-/** Rental rows: rentalId, billAmount, expectedReturn, etc. */
+/** Rental rows: lineId, rentalId (group), billAmount, expectedReturn, etc. */
 export function coerceRentalFromSheet(raw: unknown): Rental {
   const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
-  const id = str(pick(o, ['id', 'rentalId', 'rental_id']))
+  const lineId = str(pick(o, ['lineId', 'line_id', 'rentalLineId', 'rental_line_id']))
+  const rentalIdSheet = str(pick(o, ['rentalId', 'rental_id', 'id']))
+  const groupIdFromCol = str(pick(o, ['groupId', 'group_id', 'rentalGroupId', 'contractId']))
+  const productIdVal = str(pick(o, ['productId', 'product_id']))
+  /** One stable id per sheet row: lineId when present; else contractId::productId so multi-line contracts never collapse. */
+  const id =
+    lineId ||
+    (rentalIdSheet && productIdVal ? `${rentalIdSheet}::${productIdVal}` : rentalIdSheet)
+  const groupId = groupIdFromCol || rentalIdSheet
   const returnedAtRaw = pick(o, ['returnedAt', 'returned_at', 'returnDate'])
   const finalBillRaw = pick(o, ['finalBill', 'billAmount', 'bill_amount', 'final_bill'])
   const extraRaw = pick(o, ['extraCharges', 'extra_charges', 'extra'])
   const rk = pick(o, ['returnKind', 'return_kind', 'timing'])
+  const lineStatusRaw = pick(o, ['lineStatus', 'line_status'])
+  const statusRaw = str(pick(o, ['status', 'state']))
+  const returnedAt =
+    returnedAtRaw === undefined || returnedAtRaw === '' ? null : str(returnedAtRaw)
+  const lineStatusStr = lineStatusRaw != null && String(lineStatusRaw).trim() !== '' ? str(lineStatusRaw) : ''
+  const lineStatus: Rental['lineStatus'] =
+    lineStatusStr === 'returned' || lineStatusStr === 'closed'
+      ? 'returned'
+      : lineStatusStr === 'open' || lineStatusStr === 'active'
+        ? 'open'
+        : returnedAt
+          ? 'returned'
+          : 'open'
+  const statusRow: Rental['status'] =
+    statusRaw === 'closed' || statusRaw === 'returned' || statusRaw === 'completed'
+      ? 'closed'
+      : statusRaw === 'active' || statusRaw === 'open' || statusRaw === 'partial_returned'
+        ? 'active'
+        : returnedAt
+          ? 'closed'
+          : 'active'
+
   return {
     id,
-    productId: str(pick(o, ['productId', 'product_id'])),
+    groupId: groupId || id,
+    productId: productIdVal,
     productName: str(pick(o, ['productName', 'product_name', 'name'])),
     customerName: str(pick(o, ['customerName', 'customer_name', 'customer'])),
     phone: str(pick(o, ['phone', 'mobile', 'tel'])),
@@ -52,9 +83,10 @@ export function coerceRentalFromSheet(raw: unknown): Rental {
     finalBill: finalBillRaw === undefined || finalBillRaw === '' ? null : numOrNull(finalBillRaw),
     extraCharges: extraRaw === undefined || extraRaw === '' ? null : numOrNull(extraRaw),
     notes: str(pick(o, ['notes', 'note', 'comments'])),
-    status: str(pick(o, ['status', 'state'])) as Rental['status'],
+    lineStatus,
+    status: statusRow,
     rentedAt: str(pick(o, ['rentedAt', 'rented_at', 'startDate', 'startedAt'])),
-    returnedAt: returnedAtRaw === undefined || returnedAtRaw === '' ? null : str(returnedAtRaw),
+    returnedAt,
     returnKind: rk != null && String(rk).trim() !== '' ? (String(rk) as Rental['returnKind']) : null,
   }
 }

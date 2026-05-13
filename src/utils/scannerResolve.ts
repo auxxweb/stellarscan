@@ -23,7 +23,8 @@ export function extractQrProductCode(text: string): string {
         u.searchParams.get('qr') ??
         u.searchParams.get('q')
       if (fromQuery) return normalizeQrPayload(fromQuery)
-      const parts = u.pathname.split('/').filter(Boolean)
+      const pathname = u.pathname ?? ''
+      const parts = pathname.split('/').filter(Boolean)
       const last = parts[parts.length - 1]
       if (last) return normalizeQrPayload(decodeURIComponent(last))
     }
@@ -65,14 +66,14 @@ export function findProductByScan(products: Product[], scannedText: string): Pro
   return undefined
 }
 
-/** Active rental for close flow; tolerates productId casing and imperfect sheet status. */
+/** Active rental line for this physical product (open line only). */
 export function findActiveRentalForProduct(rentals: Rental[], productId: string): Rental | null {
   const pid = normalizeEntityId(productId)
   const forProduct = rentals.filter((r) => normalizeEntityId(r.productId) === pid)
 
   return (
-    forProduct.find((r) => r.status === 'active') ??
-    forProduct.find((r) => r.status !== 'closed' && (!r.returnedAt || String(r.returnedAt).trim() === '')) ??
+    forProduct.find((r) => r.lineStatus === 'open' && r.status === 'active') ??
+    forProduct.find((r) => r.status === 'active' && (!r.returnedAt || String(r.returnedAt).trim() === '')) ??
     null
   )
 }

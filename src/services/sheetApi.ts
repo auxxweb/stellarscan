@@ -21,7 +21,7 @@ const SETTINGS_KEY = 'stellar-sheet-endpoint'
 
 /** Production Apps Script Web App — used when no custom URL is saved in Settings. */
 export const DEFAULT_APPS_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbxeNfAkg1gELsIB6q9XoMbF7c2NQVzfXhnDL1e6jDPhCSgZL3RlYKJTD3VZkpLHC5KEQA/exec'
+  'https://script.google.com/macros/s/AKfycbxMYFsdrMRflTq5mhQgomo6kR6AilzOIHoHNQ39U5YmpYeOG5YsU9MacG6gxnnGzxYL0g/exec'
 
 export function getSheetEndpointOverride(): string {
   return localStorage.getItem(SETTINGS_KEY)?.trim() ?? ''

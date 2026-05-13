@@ -26,11 +26,24 @@ export function ProductCard({
   onMaintenance: (p: Product) => void
   onMaintenanceComplete: (p: Product) => void
 }) {
+  const imageSrc = product.image?.trim() || null
+
   return (
     <motion.div layout initial={{ opacity: 1, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
       <GlassCard className="group relative overflow-hidden p-0">
         <div className="relative h-40 w-full overflow-hidden">
-          <img src={product.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+          {imageSrc ? (
+            <img
+              src={imageSrc}
+              alt=""
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+            />
+          ) : (
+            <div
+              aria-hidden
+              className="h-full w-full bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/10 to-transparent" />
           <div className="absolute left-3 top-3">
             <Badge className={cn('backdrop-blur', statusBadgeClass(product.status))}>{statusLabel(product.status)}</Badge>

@@ -9,15 +9,17 @@ import { Input } from '../components/ui/Input'
 import { GlassCard } from '../components/ui/GlassCard'
 import { AddProductModal } from '../components/workflows/AddProductModal'
 import { RentOutModal } from '../components/workflows/RentOutModal'
-import { ReturnProductModal } from '../components/workflows/ReturnProductModal'
+import { ReturnContractModal } from '../components/workflows/ReturnContractModal'
 import { MaintenanceStartModal } from '../components/workflows/MaintenanceStartModal'
 import { MaintenanceCompleteModal } from '../components/workflows/MaintenanceCompleteModal'
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
-import { findActiveRentalForProduct, findOpenMaintenanceForProduct } from '../utils/scannerResolve'
+import { contractGroupKey, findOpenContractLinesForProduct } from '../utils/rentalGrouping'
+import { findOpenMaintenanceForProduct } from '../utils/scannerResolve'
 import type { Product } from '../types'
 import type { ProductStatus } from '../types'
 import { deriveStellarQrCodeFromProductId } from '../utils/qrCode'
+import { productRowReactKey } from '../utils/listKeys'
 
 export function ProductsPage() {
   const products = useAppStore((s) => s.products)
@@ -33,14 +35,9 @@ export function ProductsPage() {
 
   const [addOpen, setAddOpen] = useState(false)
   const [rentProduct, setRentProduct] = useState<Product | null>(null)
-  const [returnProduct, setReturnProduct] = useState<Product | null>(null)
+  const [returnGroupId, setReturnGroupId] = useState<string | null>(null)
   const [maintProduct, setMaintProduct] = useState<Product | null>(null)
   const [completeProduct, setCompleteProduct] = useState<Product | null>(null)
-
-  const activeRental = useMemo(() => {
-    if (!returnProduct) return null
-    return findActiveRentalForProduct(rentals, returnProduct.id)
-  }, [rentals, returnProduct])
 
   const openMaint = useMemo(() => {
     if (!completeProduct) return null
@@ -48,11 +45,12 @@ export function ProductsPage() {
   }, [maintenance, completeProduct])
 
   const requestReturn = (p: Product) => {
-    if (!findActiveRentalForProduct(rentals, p.id)) {
+    const lines = findOpenContractLinesForProduct(rentals, p.id)
+    if (lines.length === 0) {
       pushToast('No active rental found for this product. Check the Rentals sheet (product id).', 'error')
       return
     }
-    setReturnProduct(p)
+    setReturnGroupId(contractGroupKey(lines[0]!))
   }
 
   const requestMaintenanceComplete = (p: Product) => {
@@ -176,7 +174,7 @@ export function ProductsPage() {
         <motion.div layout className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((p, idx) => (
             <ProductCard
-              key={p.id}
+              key={productRowReactKey(p, idx)}
               product={p}
               index={idx}
               onRent={(x) => setRentProduct(x)}
@@ -197,12 +195,11 @@ export function ProductsPage() {
       )}
 
       <AddProductModal open={addOpen} onClose={() => setAddOpen(false)} />
-      <RentOutModal open={!!rentProduct} product={rentProduct} onClose={() => setRentProduct(null)} />
-      <ReturnProductModal
-        open={!!returnProduct}
-        product={returnProduct}
-        rental={activeRental ?? null}
-        onClose={() => setReturnProduct(null)}
+      <RentOutModal open={!!rentProduct} initialProducts={rentProduct ? [rentProduct] : []} onClose={() => setRentProduct(null)} />
+      <ReturnContractModal
+        open={returnGroupId !== null}
+        groupId={returnGroupId ?? ''}
+        onClose={() => setReturnGroupId(null)}
       />
       <MaintenanceStartModal open={!!maintProduct} product={maintProduct} onClose={() => setMaintProduct(null)} />
       <MaintenanceCompleteModal

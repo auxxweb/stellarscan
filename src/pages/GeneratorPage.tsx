@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button'
 import { PageFiltersBar } from '../components/ui/PageFiltersBar'
 import { useAppStore } from '../store/useAppStore'
 import { deriveStellarQrCodeFromProductId } from '../utils/qrCode'
+import { productRowReactKey } from '../utils/listKeys'
 import type { ProductStatus } from '../types'
 
 export function GeneratorPage() {
@@ -113,13 +114,15 @@ export function GeneratorPage() {
       ) : null}
 
       <div ref={printRef} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 print:grid-cols-3">
-        {filteredProducts.map((p) => {
+        {filteredProducts.map((p, idx) => {
           const scanPayload = deriveStellarQrCodeFromProductId(p.id)
+          const rowKey = productRowReactKey(p, idx)
+          const qrDomId = `qr-${rowKey.replace(/[^a-zA-Z0-9_-]/g, '_')}`
           return (
-          <GlassCard key={p.id} className="flex flex-col items-center text-center">
+          <GlassCard key={rowKey} className="flex flex-col items-center text-center">
             <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
               <QRCodeSVG
-                id={`qr-${p.id}`}
+                id={qrDomId}
                 value={scanPayload}
                 size={200}
                 level="M"
@@ -138,7 +141,7 @@ export function GeneratorPage() {
                 type="button"
                 variant="outline"
                 className="!px-3 !py-2"
-                onClick={() => downloadSvg(p.productName, document.querySelector(`#qr-${p.id}`))}
+                onClick={() => downloadSvg(p.productName, document.getElementById(qrDomId) as SVGSVGElement | null)}
                 leftIcon={<Download className="size-4" />}
               >
                 Download

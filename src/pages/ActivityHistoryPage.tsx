@@ -13,6 +13,7 @@ function iconFor(type: ActivityType) {
       return PackagePlus
     case 'rental_started':
       return ActivityIcon
+    case 'rental_partial_return':
     case 'rental_closed':
       return RotateCcw
     case 'maintenance_started':
@@ -31,6 +32,7 @@ const ACTIVITY_TYPES: { value: ActivityType | 'all'; label: string }[] = [
   { value: 'all', label: 'All events' },
   { value: 'product_added', label: 'Product added' },
   { value: 'rental_started', label: 'Rental started' },
+  { value: 'rental_partial_return', label: 'Partial return' },
   { value: 'rental_closed', label: 'Rental closed' },
   { value: 'maintenance_started', label: 'Maintenance started' },
   { value: 'maintenance_closed', label: 'Maintenance closed' },

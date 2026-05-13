@@ -7,6 +7,7 @@ import type {
   Product,
   ProductStatus,
   Rental,
+  RentalLineStatus,
   RentalRecordStatus,
   ReturnKind,
 } from '../types'
@@ -82,7 +83,7 @@ export function normalizeProduct(p: Product): Product {
   }
 }
 
-/** Rentals tab often uses Active/Closed, Open, etc. */
+/** Per-line rental row: active = item still out, closed = returned. */
 export function normalizeRentalStatus(raw: unknown, row: Pick<Rental, 'returnedAt'>): RentalRecordStatus {
   const s = normalizeSheetKey(raw)
   const hasReturn = row.returnedAt != null && String(row.returnedAt).trim() !== ''
@@ -95,6 +96,8 @@ export function normalizeRentalStatus(raw: unknown, row: Pick<Rental, 'returnedA
     out: 'active',
     rented: 'active',
     live: 'active',
+    partial_returned: 'active',
+    partialreturned: 'active',
     closed: 'closed',
     close: 'closed',
     completed: 'closed',
@@ -112,6 +115,19 @@ export function normalizeRentalStatus(raw: unknown, row: Pick<Rental, 'returnedA
 
   console.warn(LOG, 'Unrecognized rental status from sheet; inferring from returnedAt. Value was:', raw)
   return hasReturn ? 'closed' : 'active'
+}
+
+function normalizeRentalLineStatus(
+  raw: unknown,
+  row: Pick<Rental, 'returnedAt' | 'status' | 'lineStatus'>,
+): RentalLineStatus {
+  const ls = normalizeSheetKey(raw)
+  if (ls === 'returned' || ls === 'closed') return 'returned'
+  if (ls === 'open' || ls === 'active') return 'open'
+  const hasReturn = row.returnedAt != null && String(row.returnedAt).trim() !== ''
+  if (hasReturn || row.status === 'closed') return 'returned'
+  if (row.lineStatus === 'returned') return 'returned'
+  return 'open'
 }
 
 export function normalizeReturnKind(raw: unknown): ReturnKind | null {
@@ -137,10 +153,16 @@ export function normalizeRental(r: Rental): Rental {
   const rawAdv = (r as unknown as { advanceAmount?: unknown }).advanceAmount
   const advanceAmount =
     rawAdv === undefined || rawAdv === null ? 0 : Number(rawAdv)
+  const status = normalizeRentalStatus(r.status, r)
+  const lineStatus = normalizeRentalLineStatus(r.lineStatus, { ...r, status })
+  const gid = String(r.groupId ?? '').trim()
+  const groupId = gid || String(r.id ?? '').trim()
   return {
     ...r,
+    groupId,
     advanceAmount: Number.isFinite(advanceAmount) ? advanceAmount : 0,
-    status: normalizeRentalStatus(r.status, r),
+    status,
+    lineStatus,
     returnKind,
   }
 }
@@ -187,6 +209,7 @@ function normalizeActivityType(raw: unknown): ActivityType {
   const aliases: Record<string, ActivityType> = {
     product_added: 'product_added',
     rental_started: 'rental_started',
+    rental_partial_return: 'rental_partial_return',
     rental_closed: 'rental_closed',
     maintenance_started: 'maintenance_started',
     maintenance_closed: 'maintenance_closed',
@@ -196,6 +219,8 @@ function normalizeActivityType(raw: unknown): ActivityType {
     rented: 'rental_started',
     return: 'rental_closed',
     returned: 'rental_closed',
+    partial_return: 'rental_partial_return',
+    partialreturn: 'rental_partial_return',
     maintenance: 'maintenance_started',
     maint: 'maintenance_started',
     service: 'maintenance_started',
@@ -206,6 +231,7 @@ function normalizeActivityType(raw: unknown): ActivityType {
   if (
     s === 'product_added' ||
     s === 'rental_started' ||
+    s === 'rental_partial_return' ||
     s === 'rental_closed' ||
     s === 'maintenance_started' ||
     s === 'maintenance_closed' ||

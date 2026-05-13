@@ -6,37 +6,22 @@ import { useProductScannerFlow } from '../hooks/useProductScannerFlow'
 import type { Product } from '../types'
 import { ScannerDecisionModal } from '../components/workflows/ScannerDecisionModal'
 import { RentOutModal } from '../components/workflows/RentOutModal'
-import { ReturnProductModal } from '../components/workflows/ReturnProductModal'
+import { ReturnContractModal } from '../components/workflows/ReturnContractModal'
 import { MaintenanceStartModal } from '../components/workflows/MaintenanceStartModal'
 import { MaintenanceCompleteModal } from '../components/workflows/MaintenanceCompleteModal'
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
+import { pickPreferredQrCamera, sanitizeQrMountDomId } from '../utils/html5QrMount'
 import { playScanSuccessSound, vibrateSuccess } from '../utils/sound'
-import { findActiveRentalForProduct, findOpenMaintenanceForProduct } from '../utils/scannerResolve'
-
-function sanitizeDomId(raw: string): string {
-  return `stellar-qr-${raw.replace(/[^a-zA-Z0-9_-]/g, '')}`
-}
-
-async function pickPreferredCamera(): Promise<string | MediaTrackConstraints> {
-  try {
-    const cameras = await Html5Qrcode.getCameras()
-    if (cameras.length === 0) {
-      return { facingMode: 'environment' }
-    }
-    const back = cameras.find((c) => /back|rear|environment|wide/i.test(c.label))
-    return back?.id ?? cameras[0]!.id
-  } catch {
-    return { facingMode: 'environment' }
-  }
-}
+import { contractGroupKey, findOpenContractLinesForProduct, getOpenContractLinesByGroupId } from '../utils/rentalGrouping'
+import { findOpenMaintenanceForProduct } from '../utils/scannerResolve'
 
 export function ScannerPage() {
   const rentals = useAppStore((s) => s.rentals)
   const maintenance = useAppStore((s) => s.maintenance)
   const hydrated = useAppStore((s) => s.hydrated)
 
-  const readerDomId = sanitizeDomId(useId())
+  const readerDomId = sanitizeQrMountDomId(useId())
 
   const [last, setLast] = useState<string | null>(null)
   const instanceRef = useRef<Html5Qrcode | null>(null)
@@ -45,22 +30,21 @@ export function ScannerPage() {
 
   const [decisionProduct, setDecisionProduct] = useState<Product | null>(null)
   const [rentProduct, setRentProduct] = useState<Product | null>(null)
-  const [returnProduct, setReturnProduct] = useState<Product | null>(null)
+  const [returnGroupId, setReturnGroupId] = useState<string | null>(null)
   const [maintProduct, setMaintProduct] = useState<Product | null>(null)
   const [completeProduct, setCompleteProduct] = useState<Product | null>(null)
 
   const pushToast = useToastStore((s) => s.push)
 
-  const activeRental = returnProduct ? findActiveRentalForProduct(rentals, returnProduct.id) : null
   const openMaint = completeProduct ? findOpenMaintenanceForProduct(maintenance, completeProduct.id) : null
 
   useEffect(() => {
-    if (!returnProduct || !hydrated) return
-    if (!findActiveRentalForProduct(rentals, returnProduct.id)) {
-      pushToast('No active rental for this product. Refresh data in Settings, or check the Rentals sheet (product id).', 'error')
-      setReturnProduct(null)
+    if (!returnGroupId || !hydrated) return
+    if (getOpenContractLinesByGroupId(rentals, returnGroupId).length === 0) {
+      pushToast('No open items on this contract. Refresh if needed.', 'error')
+      setReturnGroupId(null)
     }
-  }, [returnProduct, rentals, hydrated, pushToast])
+  }, [returnGroupId, rentals, hydrated, pushToast])
 
   useEffect(() => {
     if (!completeProduct || !hydrated) return
@@ -91,10 +75,17 @@ export function ScannerPage() {
   const flowHandlers = useMemo(
     () => ({
       onAvailable: (p: Product) => setDecisionProduct(p),
-      onReturn: (p: Product) => setReturnProduct(p),
+      onReturn: (p: Product) => {
+        const lines = findOpenContractLinesForProduct(useAppStore.getState().rentals, p.id)
+        if (lines.length === 0) {
+          pushToast('No active rental for this product.', 'error')
+          return
+        }
+        setReturnGroupId(contractGroupKey(lines[0]!))
+      },
       onMaintenanceComplete: (p: Product) => setCompleteProduct(p),
     }),
-    [],
+    [pushToast],
   )
 
   const { handleDecoded } = useProductScannerFlow(flowHandlers)
@@ -151,7 +142,7 @@ export function ScannerPage() {
       )
     }
 
-    const primary = await pickPreferredCamera()
+    const primary = await pickPreferredQrCamera()
     try {
       await tryRun(primary)
     } catch (first) {
@@ -169,7 +160,7 @@ export function ScannerPage() {
     }
   }, [handleDecoded, pushToast, readerDomId, stopScanner])
 
-  const anyModalOpen = !!(decisionProduct || rentProduct || returnProduct || maintProduct || completeProduct)
+  const anyModalOpen = !!(decisionProduct || rentProduct || returnGroupId || maintProduct || completeProduct)
   useEffect(() => {
     if (hadModalOpenRef.current && !anyModalOpen) {
       const t = window.setTimeout(() => void startScanner(), 400)
@@ -241,12 +232,11 @@ export function ScannerPage() {
         onMaintenance={(p) => setMaintProduct(p)}
       />
 
-      <RentOutModal open={!!rentProduct} product={rentProduct} onClose={() => setRentProduct(null)} />
-      <ReturnProductModal
-        open={!!returnProduct}
-        product={returnProduct}
-        rental={activeRental}
-        onClose={() => setReturnProduct(null)}
+      <RentOutModal open={!!rentProduct} initialProducts={rentProduct ? [rentProduct] : []} onClose={() => setRentProduct(null)} />
+      <ReturnContractModal
+        open={returnGroupId !== null}
+        groupId={returnGroupId ?? ''}
+        onClose={() => setReturnGroupId(null)}
       />
       <MaintenanceStartModal open={!!maintProduct} product={maintProduct} onClose={() => setMaintProduct(null)} />
       <MaintenanceCompleteModal

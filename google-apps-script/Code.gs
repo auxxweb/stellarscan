@@ -1,89 +1,152 @@
 /**
- * Stellar Camera Rentals — Google Apps Script Web App
- * Tabs: Products, Rentals, Maintenance, ActivityLogs
- * Row 1 = headers (canonical names below; aliases supported when reading).
+ * StellarScan web app — compatible with the React client (googleScriptApi.ts).
+ * Sheet tabs: Products, Rentals, Maintenance, ActivityLogs
+ *
+ * Spreadsheet: set script property SPREADSHEET_ID to the Sheet ID, OR deploy as
+ * "Sheets add-on / container-bound" so getActiveSpreadsheet() is the inventory file.
  */
 
+var SHEET_PRODUCTS = 'Products';
+var SHEET_RENTALS = 'Rentals';
+var SHEET_MAINTENANCE = 'Maintenance';
+var SHEET_ACTIVITY = 'ActivityLogs';
 var SPREADSHEET_ID_KEY = 'SPREADSHEET_ID';
 
-/** Canonical headers — align new sheets; existing sheets matched via aliases + column position. */
-var HEADERS_PRODUCTS = [
-  'id', 'qrCode', 'productName', 'category', 'brand', 'modelNumber', 'serialNumber',
-  'rentalPrice', 'image', 'status', 'currentCustomer', 'expectedReturnDate', 'lastUpdated',
-];
+/* =====================================================
+   SPREADSHEET + JSON
+===================================================== */
 
-/** Matches common sheet layouts; append missing columns at end via ensureExtraColumns_ */
-var HEADERS_RENTALS = [
-  'rentalId', 'productId', 'productName', 'customerName', 'phone', 'advanceAmount',
-  'rentedAt', 'expectedReturn', 'returnedAt', 'billAmount', 'extraCharges', 'notes',
-  'status', 'returnKind',
-];
-
-var HEADERS_MAINT = [
-  'maintenanceId', 'productId', 'productName', 'givenTo', 'issue',
-  'startedAt', 'expectedCompletion', 'completedAt', 'cost', 'notes', 'status',
-];
-
-var HEADERS_ACTIVITY = [
-  'logId', 'type', 'productId', 'productName', 'message', 'meta', 'timestamp',
-];
-
-/** When obj[h] empty, try these sheet column names (same row object keyed by actual headers). */
-var FIELD_ALIASES = {
-  rentals: {
-    rentalId: ['id', 'rental_id'],
-    billAmount: ['finalBill', 'final_bill'],
-    expectedReturn: ['expectedReturnDate', 'expected_return', 'due'],
-    timestamp: ['createdAt', 'created_at', 'time'],
-    type: ['action', 'event'],
-    message: ['description', 'details'],
-    logId: ['id'],
-    maintenanceId: ['id', 'ticketId'],
-    cost: ['repairCost', 'repair_cost', 'amount'],
-    startedAt: ['createdAt', 'openedAt'],
-    expectedCompletion: ['estimatedCompletion', 'estimated_completion', 'eta'],
-  },
-};
+function getSpreadsheet_() {
+  var id = PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_KEY);
+  if (id && String(id).trim()) return SpreadsheetApp.openById(String(id).trim());
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error(
+      'No spreadsheet: set Script property SPREADSHEET_ID to your Sheet ID, or deploy this script from the spreadsheet (Extensions → Apps Script).',
+    );
+  }
+  return ss;
+}
 
 function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
 
-function getSpreadsheet_() {
-  var id = PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_KEY);
-  if (!id) throw new Error('Set script property SPREADSHEET_ID to your Google Sheet ID');
-  return SpreadsheetApp.openById(id);
+function dashboardSuccessPayload_() {
+  return {
+    success: true,
+    products: readProducts_(),
+    rentals: readRentals_(),
+    maintenance: readMaintenance_(),
+    activityLogs: readActivityLogs_(),
+  };
 }
 
-function getOrCreateSheet_(name, headers) {
-  var ss = getSpreadsheet_();
-  var sh = ss.getSheetByName(name);
-  if (!sh) {
-    sh = ss.insertSheet(name);
-    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
-  } else if (sh.getLastRow() === 0) {
-    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+/* =====================================================
+   POST body merge (client sends URL-encoded body)
+===================================================== */
+
+function parseUrlEncodedForm_(raw) {
+  var out = {};
+  var pairs = String(raw == null ? '' : raw).split('&');
+  for (var i = 0; i < pairs.length; i++) {
+    var pair = pairs[i];
+    if (!pair && pair !== '0') continue;
+    var eq = pair.indexOf('=');
+    var encKey = eq === -1 ? pair : pair.substring(0, eq);
+    var encVal = eq === -1 ? '' : pair.substring(eq + 1);
+    var key;
+    var val;
+    try {
+      key = decodeURIComponent(encKey.replace(/\+/g, ' '));
+      val = decodeURIComponent(encVal.replace(/\+/g, ' '));
+    } catch (ex) {
+      continue;
+    }
+    if (key) out[key] = val;
   }
-  ensureExtraColumns_(sh, headers);
-  return sh;
+  return out;
 }
 
-/** Append missing headers at the end so older sheets gain billAmount, extraCharges, etc. */
-function ensureExtraColumns_(sh, requiredHeaders) {
-  var lc = sh.getLastColumn();
-  if (lc < 1) return;
-  var existing = sh.getRange(1, 1, 1, lc).getValues()[0].map(function (x) {
+function mergeRequestParams_(e) {
+  var out = {};
+  if (!e) return out;
+  var k;
+  if (e.parameter) {
+    for (k in e.parameter) {
+      if (Object.prototype.hasOwnProperty.call(e.parameter, k)) out[k] = e.parameter[k];
+    }
+  }
+  var raw = e.postData && e.postData.contents;
+  var ctype = e.postData && e.postData.type ? String(e.postData.type).toLowerCase() : '';
+  if (raw != null && String(raw).trim()) {
+    if (ctype.indexOf('application/json') >= 0) {
+      try {
+        var jobj = JSON.parse(String(raw));
+        if (jobj && typeof jobj === 'object' && !Array.isArray(jobj)) {
+          for (var kj in jobj) {
+            if (!Object.prototype.hasOwnProperty.call(jobj, kj)) continue;
+            var vj = jobj[kj];
+            if (vj == null) out[kj] = '';
+            else if (typeof vj === 'object') out[kj] = JSON.stringify(vj);
+            else out[kj] = String(vj);
+          }
+        }
+      } catch (jx) {}
+    } else {
+      var parsed = parseUrlEncodedForm_(String(raw));
+      for (k in parsed) {
+        if (Object.prototype.hasOwnProperty.call(parsed, k)) out[k] = parsed[k];
+      }
+    }
+  }
+  return out;
+}
+
+/* =====================================================
+   Sheet → row objects (header row = keys)
+===================================================== */
+
+function getSheetData_(sheet) {
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+  var headers = data[0].map(function (x) {
     return String(x || '').trim();
   });
-  var toAdd = [];
-  for (var i = 0; i < requiredHeaders.length; i++) {
-    var h = requiredHeaders[i];
-    if (existing.indexOf(h) < 0) toAdd.push(h);
+  var out = [];
+  for (var r = 1; r < data.length; r++) {
+    var row = data[r];
+    var o = {};
+    for (var c = 0; c < headers.length; c++) {
+      if (!headers[c]) continue;
+      o[headers[c]] = row[c];
+    }
+    out.push(o);
   }
-  if (toAdd.length === 0) return;
-  var start = lc + 1;
-  sh.getRange(1, start, 1, start + toAdd.length - 1).setValues([toAdd]);
+  return out;
 }
+
+function readProducts_() {
+  return getSheetData_(getSpreadsheet_().getSheetByName(SHEET_PRODUCTS));
+}
+
+function readRentals_() {
+  return getSheetData_(getSpreadsheet_().getSheetByName(SHEET_RENTALS));
+}
+
+function readMaintenance_() {
+  return getSheetData_(getSpreadsheet_().getSheetByName(SHEET_MAINTENANCE));
+}
+
+function readActivityLogs_() {
+  return getSheetData_(getSpreadsheet_().getSheetByName(SHEET_ACTIVITY));
+}
+
+/* =====================================================
+   Product helpers (fixed columns — same as your script)
+   Col A=0 id, …, col J=9 status, K=10 customer, L=11 expected, M=12 lastUpdated
+===================================================== */
 
 function nk_(s) {
   return String(s || '')
@@ -92,476 +155,474 @@ function nk_(s) {
     .replace(/\s+/g, '');
 }
 
-/** Build lookup from actual header row → column index */
-function headerIndexMap_(sh) {
-  var lc = sh.getLastColumn();
-  var row = lc > 0 ? sh.getRange(1, 1, 1, lc).getValues()[0] : [];
-  var map = {};
-  for (var i = 0; i < row.length; i++) {
-    var key = String(row[i]).trim();
-    if (!key) continue;
-    map[nk_(key)] = i + 1;
-    map[key] = i + 1;
-  }
-  return map;
+function isRowAvailable_(statusCell) {
+  var s = nk_(statusCell);
+  if (!s) return true;
+  return (
+    s === 'available' ||
+    s === 'avail' ||
+    s === 'free' ||
+    s === 'instock' ||
+    s === 'in_stock' ||
+    s === 'ready'
+  );
 }
 
-function pickAlias_(o, canonicalField, aliasGroup) {
-  var alts = FIELD_ALIASES[aliasGroup] && FIELD_ALIASES[aliasGroup][canonicalField];
-  var keys = Object.keys(o);
-  var tryOrder = [canonicalField];
-  if (alts) for (var a = 0; a < alts.length; a++) tryOrder.push(alts[a]);
-  for (var t = 0; t < tryOrder.length; t++) {
-    var name = tryOrder[t];
-    for (var k = 0; k < keys.length; k++) {
-      if (nk_(keys[k]) === nk_(name)) {
-        var v = o[keys[k]];
-        if (v !== '' && v !== undefined && v !== null) return v;
-      }
-    }
-  }
-  return undefined;
-}
-
-function normalizeCell_(h, v) {
-  if (
-    nk_(h).indexOf('price') >= 0 ||
-    nk_(h).indexOf('amount') >= 0 ||
-    nk_(h) === 'advanceamount' ||
-    nk_(h) === 'billamount' ||
-    nk_(h) === 'finalbill' ||
-    nk_(h) === 'extracharges' ||
-    nk_(h) === 'cost' ||
-    nk_(h) === 'repaircost'
-  ) {
-    return v === '' || v === null ? null : Number(v);
-  }
-  if (nk_(h) === 'meta' && typeof v === 'string' && v) {
-    try {
-      return JSON.parse(v);
-    } catch (e) {
-      return {};
-    }
-  }
-  if (v instanceof Date) return v.toISOString();
-  return v === null || v === undefined ? '' : v;
-}
-
-/** Row object keyed by sheet headers → canonical record object for JSON arrays */
-function rowToCanonical_(o, headers, sheetName) {
-  var x = {};
-  var keys = Object.keys(o);
-  for (var i = 0; i < headers.length; i++) {
-    var h = headers[i];
-    var v = undefined;
-    for (var k = 0; k < keys.length; k++) {
-      if (nk_(keys[k]) === nk_(h)) {
-        v = o[keys[k]];
-        break;
-      }
-    }
-    if (v === undefined || v === null || v === '') {
-      v = pickAlias_(o, h, 'rentals');
-    }
-    x[h] = normalizeCell_(h, v === undefined || v === null ? '' : v);
-  }
-  return x;
-}
-
-function sheetToObjects_(sh, headers, sheetName) {
-  var values = sh.getDataRange().getValues();
-  if (values.length < 2) return [];
-  var rowHeaders = values[0].map(function (x) {
-    return String(x || '').trim();
-  });
-  var out = [];
-  for (var r = 1; r < values.length; r++) {
-    var row = values[r];
-    var o = {};
-    for (var c = 0; c < rowHeaders.length; c++) {
-      var key = rowHeaders[c];
-      if (!key) continue;
-      o[key] = row[c];
-    }
-    out.push(rowToCanonical_(o, headers, sheetName));
-  }
-  return out;
-}
-
-/** Serialize canonical row for append/update using sheet header names */
-function canonicalToRowArray_(sh, headers, obj) {
-  ensureExtraColumns_(sh, headers);
-  var lr = sh.getLastColumn();
-  var headerRow = lr > 0 ? sh.getRange(1, 1, 1, lr).getValues()[0] : [];
-  var arr = [];
-  for (var c = 0; c < headerRow.length; c++) {
-    var hc = String(headerRow[c] || '').trim();
-    var v = '';
-    var fn = '';
-    for (var hi = 0; hi < headers.length; hi++) {
-      if (nk_(headers[hi]) === nk_(hc)) {
-        fn = headers[hi];
-        v = obj[fn];
-        break;
-      }
-    }
-    if (v === undefined || v === null || v === '') {
-      if (nk_(hc) === nk_('rentalId')) v = obj.rentalId || obj.id || '';
-      else if (nk_(hc) === nk_('maintenanceId')) v = obj.maintenanceId || obj.id || '';
-      else if (nk_(hc) === nk_('logId')) v = obj.logId || obj.id || '';
-    }
-    if (fn === 'meta' && typeof v === 'object' && v !== null) v = JSON.stringify(v || {});
-    if (v === undefined || v === null) v = '';
-    arr.push(v);
-  }
-  return arr;
-}
-
-function appendRowCanonical_(sh, headers, sheetName, obj) {
-  ensureExtraColumns_(sh, headers);
-  var arr = canonicalToRowArray_(sh, headers, obj);
-  sh.appendRow(arr);
-}
-
-function updateRowCanonical_(sh, rowIndex, headers, sheetName, obj) {
-  ensureExtraColumns_(sh, headers);
-  var arr = canonicalToRowArray_(sh, headers, obj);
-  sh.getRange(rowIndex, 1, rowIndex, arr.length).setValues([arr]);
-}
-
-function findRowByIdFlexible_(sh, id, idHeaders) {
-  var hmap = headerIndexMap_(sh);
-  var lc = sh.getLastColumn();
-  var data = sh.getDataRange().getValues();
-  var colIdx = -1;
-  for (var i = 0; i < idHeaders.length; i++) {
-    var h = idHeaders[i];
-    var c = hmap[nk_(h)] || hmap[h];
-    if (c) {
-      colIdx = c - 1;
-      break;
-    }
-  }
-  if (colIdx < 0) colIdx = 0;
-  for (var r = 1; r < data.length; r++) {
-    if (String(data[r][colIdx]) === String(id)) return r + 1;
+function findProductRowIndex_(rows, productId) {
+  var pid = String(productId).trim();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]).trim() === pid) return i;
   }
   return -1;
 }
 
-function nowIso_() {
-  return new Date().toISOString();
+/** StellarScan sends JSON array, base64 JSON, comma list, or single productId. */
+function parseProductIdsForRent_(p) {
+  p = p || {};
+  var rawIds = p.productIds;
+  if (rawIds != null && typeof rawIds !== 'string') {
+    if (Array.isArray(rawIds)) {
+      p.productIds = rawIds
+        .map(function (x) {
+          return String(x || '').trim();
+        })
+        .filter(Boolean)
+        .join(',');
+    } else {
+      p.productIds = String(rawIds);
+    }
+  }
+  var b64 = p.productIdsB64;
+  if (b64 && String(b64).trim()) {
+    try {
+      var jsonStr = Utilities.newBlob(Utilities.base64Decode(b64)).getDataAsString();
+      var arrB = JSON.parse(jsonStr);
+      if (Array.isArray(arrB)) {
+        return arrB
+          .map(function (x) {
+            return String(x || '').trim();
+          })
+          .filter(Boolean);
+      }
+    } catch (e1) {}
+  }
+  var j = p.productIdsJson;
+  if (j && String(j).trim()) {
+    try {
+      var arr = JSON.parse(j);
+      if (Array.isArray(arr)) {
+        return arr
+          .map(function (x) {
+            return String(x || '').trim();
+          })
+          .filter(Boolean);
+      }
+    } catch (e2) {}
+  }
+  var s = p.productIds;
+  if (s && String(s).trim()) {
+    return String(s)
+      .split(',')
+      .map(function (x) {
+        return x.trim();
+      })
+      .filter(Boolean);
+  }
+  if (p.productId) return [String(p.productId).trim()];
+  return [];
 }
 
-function readProducts_() {
-  var sh = getOrCreateSheet_('Products', HEADERS_PRODUCTS);
-  return sheetToObjects_(sh, HEADERS_PRODUCTS, 'Products');
+/** Optional productNames: JSON array (productNamesJson), comma CSV, or derive from sheet col C. */
+function resolveProductNames_(productRows, ids, explicitCsv, explicitJson) {
+  var fromParam = [];
+  var jstr = explicitJson == null || explicitJson === undefined ? '' : String(explicitJson).trim();
+  if (jstr && jstr.charAt(0) === '[') {
+    try {
+      var jarr = JSON.parse(jstr);
+      if (Array.isArray(jarr)) {
+        fromParam = jarr.map(function (x) {
+          return String(x || '').trim();
+        });
+      }
+    } catch (je) {}
+  }
+  if (fromParam.length === 0) {
+    var csv = explicitCsv == null || explicitCsv === undefined ? '' : String(explicitCsv);
+    if (csv.trim()) {
+      fromParam = csv.split(',').map(function (x) {
+        return x.trim();
+      });
+    }
+  }
+  var out = [];
+  for (var p = 0; p < ids.length; p++) {
+    if (fromParam[p]) {
+      out.push(fromParam[p]);
+      continue;
+    }
+    var ix = findProductRowIndex_(productRows, ids[p]);
+    var name = ix > 0 ? String(productRows[ix][2] || '').trim() : '';
+    out.push(name || String(ids[p]));
+  }
+  return out;
 }
 
-function readRentals_() {
-  var sh = getOrCreateSheet_('Rentals', HEADERS_RENTALS);
-  return sheetToObjects_(sh, HEADERS_RENTALS, 'Rentals');
-}
-
-function readMaintenance_() {
-  var sh = getOrCreateSheet_('Maintenance', HEADERS_MAINT);
-  return sheetToObjects_(sh, HEADERS_MAINT, 'Maintenance');
-}
-
-function readActivity_() {
-  var sh = getOrCreateSheet_('ActivityLogs', HEADERS_ACTIVITY);
-  return sheetToObjects_(sh, HEADERS_ACTIVITY, 'ActivityLogs');
-}
-
-function logActivity_(type, productId, productName, message, meta) {
-  var sh = getOrCreateSheet_('ActivityLogs', HEADERS_ACTIVITY);
-  appendRowCanonical_(sh, HEADERS_ACTIVITY, 'ActivityLogs', {
-    logId: Utilities.getUuid(),
-    type: type,
-    productId: productId,
-    productName: productName,
-    message: message,
-    meta: meta || {},
-    timestamp: nowIso_(),
-  });
-}
+/* =====================================================
+   GET
+===================================================== */
 
 function doGet(e) {
   try {
-    var action = (e.parameter && e.parameter.action) || '';
-    if (action === 'getDashboard') {
-      return jsonResponse({
-        products: readProducts_(),
-        rentals: readRentals_(),
-        maintenance: readMaintenance_(),
-        activityLogs: readActivity_(),
-      });
+    var action = (e && e.parameter && e.parameter.action) || '';
+    if (!action) {
+      return jsonResponse({ success: false, message: 'No action provided' });
     }
-    if (action === 'getProducts') return jsonResponse({ products: readProducts_() });
-    if (action === 'getRentals') return jsonResponse({ rentals: readRentals_() });
-    if (action === 'getMaintenance') return jsonResponse({ maintenance: readMaintenance_() });
-    if (action === 'getActivities') return jsonResponse({ activityLogs: readActivity_() });
+
+    if (action === 'getDashboard') {
+      return jsonResponse(dashboardSuccessPayload_());
+    }
+
+    if (action === 'getProducts') {
+      return jsonResponse({ success: true, products: readProducts_() });
+    }
+
+    if (action === 'getRentals') {
+      return jsonResponse({ success: true, rentals: readRentals_() });
+    }
+
+    if (action === 'getMaintenance') {
+      return jsonResponse({ success: true, maintenance: readMaintenance_() });
+    }
+
+    if (action === 'getActivities') {
+      return jsonResponse({ success: true, activityLogs: readActivityLogs_() });
+    }
+
     return jsonResponse({ success: false, message: 'Invalid GET action' });
   } catch (err) {
-    return jsonResponse({ success: false, message: String(err && err.message ? err.message : err) });
+    var em = err && err.message ? String(err.message) : String(err);
+    return jsonResponse({ success: false, message: em || 'GET error' });
   }
 }
+
+/* =====================================================
+   POST
+===================================================== */
 
 function doPost(e) {
   try {
-    var p = e.parameter;
+    var p = mergeRequestParams_(e || {});
     var action = p.action;
-    if (!action) return jsonResponse({ success: false, message: 'Missing action' });
+    if (!action) {
+      return jsonResponse({ success: false, message: 'Missing action' });
+    }
 
     if (action === 'addProduct') {
-      handleAddProduct_(p);
-    } else if (action === 'rentProduct') {
-      handleRentProduct_(p);
-    } else if (action === 'returnProduct') {
-      handleReturnProduct_(p);
-    } else if (action === 'markMaintenance') {
-      handleMarkMaintenance_(p);
-    } else if (action === 'completeMaintenance') {
-      handleCompleteMaintenance_(p);
-    } else if (action === 'resetDemo') {
-      handleResetDemo_();
-    } else {
-      return jsonResponse({ success: false, message: 'Invalid POST action' });
+      return addProduct_(p);
+    }
+    if (action === 'rentProduct') {
+      return rentProduct_(p);
+    }
+    if (action === 'returnProduct') {
+      return returnProduct_(p);
+    }
+    if (action === 'markMaintenance') {
+      return markMaintenance_(p);
+    }
+    if (action === 'completeMaintenance') {
+      return completeMaintenance_(p);
+    }
+    if (action === 'resetDemo') {
+      return jsonResponse({ success: false, message: 'resetDemo is not enabled on this deployment.' });
     }
 
-    return jsonResponse({
-      success: true,
-      products: readProducts_(),
-      rentals: readRentals_(),
-      maintenance: readMaintenance_(),
-      activityLogs: readActivity_(),
-    });
+    return jsonResponse({ success: false, message: 'Invalid POST action' });
   } catch (err) {
-    return jsonResponse({ success: false, message: String(err && err.message ? err.message : err) });
+    var em = err && err.message ? String(err.message) : String(err);
+    return jsonResponse({ success: false, message: em || 'POST error' });
   }
 }
 
-function handleAddProduct_(p) {
-  var id = Utilities.getUuid();
-  var qrCode = 'STELLAR-' + id.replace(/-/g, '').substring(0, 10).toUpperCase();
-  var sh = getOrCreateSheet_('Products', HEADERS_PRODUCTS);
-  var row = {
-    id: id,
-    qrCode: qrCode,
-    productName: p.productName || '',
-    category: p.category || '',
-    brand: p.brand || '',
-    modelNumber: p.modelNumber || '',
-    serialNumber: p.serialNumber || '',
-    rentalPrice: Number(p.rentalPrice || 0),
-    image: p.image || '',
-    status: p.status || 'available',
-    currentCustomer: '',
-    expectedReturnDate: '',
-    lastUpdated: nowIso_(),
-  };
-  appendRowCanonical_(sh, HEADERS_PRODUCTS, 'Products', row);
-  logActivity_('product_added', id, row.productName, 'New product added — ' + row.productName, { category: row.category });
+/* =====================================================
+   PRODUCTS
+===================================================== */
+
+function addProduct_(data) {
+  var sheet = getSpreadsheet_().getSheetByName(SHEET_PRODUCTS);
+  if (!sheet) throw new Error('Missing sheet: ' + SHEET_PRODUCTS);
+
+  var id = (data.id && String(data.id).trim()) || Utilities.getUuid();
+  var qr =
+    (data.qrCode && String(data.qrCode).trim()) ||
+    'STELLAR-' + String(id).replace(/-/g, '').substring(0, 10).toUpperCase();
+
+  sheet.appendRow([
+    id,
+    qr,
+    data.productName || '',
+    data.category || '',
+    data.brand || '',
+    data.modelNumber || '',
+    data.serialNumber || '',
+    Number(data.rentalPrice || 0),
+    data.image || '',
+    'Available',
+    '',
+    '',
+    new Date(),
+  ]);
+
+  addActivity_(id, 'product_added', (data.productName || 'Product') + ' added');
+
+  var out = dashboardSuccessPayload_();
+  out.message = 'Product added successfully';
+  return jsonResponse(out);
 }
 
-function handleRentProduct_(p) {
-  var psh = getOrCreateSheet_('Products', HEADERS_PRODUCTS);
-  var products = readProducts_();
-  var prod = null;
-  for (var i = 0; i < products.length; i++) {
-    if (String(products[i].id) === String(p.productId)) {
-      prod = products[i];
+/* =====================================================
+   RENT (multi-product) — StellarScan–compatible
+===================================================== */
+
+function rentProduct_(data) {
+  data = data || {};
+  var productSheet = getSpreadsheet_().getSheetByName(SHEET_PRODUCTS);
+  var rentalSheet = getSpreadsheet_().getSheetByName(SHEET_RENTALS);
+  if (!productSheet || !rentalSheet) throw new Error('Missing Products or Rentals sheet');
+
+  var ids = parseProductIdsForRent_(data);
+  if (ids.length === 0) throw new Error('No products to rent (send productIds, productIdsJson, or productIdsB64)');
+
+  var rentalGroupId =
+    (data.rentalGroupId && String(data.rentalGroupId).trim()) ||
+    (data.groupId && String(data.groupId).trim()) ||
+    'RENT-' + Date.now();
+
+  var productRows = productSheet.getDataRange().getValues();
+  var productNames = resolveProductNames_(
+    productRows,
+    ids,
+    data.productNames || '',
+    data.productNamesJson || '',
+  );
+
+  for (var p = 0; p < ids.length; p++) {
+    var productId = ids[p];
+    var ix = findProductRowIndex_(productRows, productId);
+    if (ix < 0) throw new Error('Product not found: ' + productId);
+    if (!isRowAvailable_(productRows[ix][9])) throw new Error('Product not available: ' + productId);
+  }
+
+  var due = data.expectedReturn || data.expectedReturnDate || '';
+
+  for (var t = 0; t < ids.length; t++) {
+    var pid = ids[t];
+    var pnm = productNames[t] || pid;
+
+    for (var i = 1; i < productRows.length; i++) {
+      if (String(productRows[i][0]).trim() !== String(pid).trim()) continue;
+
+      productSheet.getRange(i + 1, 10).setValue('Rented');
+      productSheet.getRange(i + 1, 11).setValue(data.customerName || '');
+      productSheet.getRange(i + 1, 12).setValue(due);
+      productSheet.getRange(i + 1, 13).setValue(new Date());
       break;
     }
+
+    rentalSheet.appendRow([
+      rentalGroupId,
+      pid,
+      pnm,
+      data.customerName || '',
+      data.phone || '',
+      new Date(),
+      due,
+      '',
+      '',
+      'Active',
+      ids.length,
+    ]);
+
+    addActivity_(pid, 'rental_started', 'Rented to ' + (data.customerName || ''));
   }
-  if (!prod || prod.status !== 'available') throw new Error('Product not available');
 
-  var rowIndex = findRowByIdFlexible_(psh, p.productId, ['id']);
-  if (rowIndex < 0) throw new Error('Product row not found');
-
-  prod.status = 'rented';
-  prod.currentCustomer = p.customerName || '';
-  var dueBack = p.expectedReturn || p.expectedReturnDate || '';
-  prod.expectedReturnDate = dueBack;
-  prod.lastUpdated = nowIso_();
-  updateRowCanonical_(psh, rowIndex, HEADERS_PRODUCTS, 'Products', prod);
-
-  var rentalId = Utilities.getUuid();
-  var rsh = getOrCreateSheet_('Rentals', HEADERS_RENTALS);
-  appendRowCanonical_(rsh, HEADERS_RENTALS, 'Rentals', {
-    rentalId: rentalId,
-    productId: p.productId,
-    productName: prod.productName,
-    customerName: p.customerName || '',
-    phone: p.phone || '',
-    advanceAmount: Number(p.advanceAmount || 0),
-    rentedAt: nowIso_(),
-    expectedReturn: dueBack,
-    returnedAt: '',
-    billAmount: '',
-    extraCharges: '',
-    notes: p.notes || '',
-    status: 'active',
-    returnKind: '',
-  });
-  logActivity_('rental_started', p.productId, prod.productName, 'Rented to ' + (p.customerName || ''), { rentalId: rentalId });
+  var out = dashboardSuccessPayload_();
+  out.rentalId = rentalGroupId;
+  out.totalProducts = ids.length;
+  out.message = 'Products rented successfully';
+  return jsonResponse(out);
 }
 
-function handleReturnProduct_(p) {
-  var psh = getOrCreateSheet_('Products', HEADERS_PRODUCTS);
-  var products = readProducts_();
-  var prod = null;
-  for (var i = 0; i < products.length; i++) {
-    if (String(products[i].id) === String(p.productId)) {
-      prod = products[i];
-      break;
-    }
-  }
-  if (!prod) throw new Error('Product not found');
+/* =====================================================
+   RETURN
+===================================================== */
 
-  var prodRow = findRowByIdFlexible_(psh, p.productId, ['id']);
-  prod.status = 'available';
-  prod.currentCustomer = '';
-  prod.expectedReturnDate = '';
-  prod.lastUpdated = nowIso_();
-  updateRowCanonical_(psh, prodRow, HEADERS_PRODUCTS, 'Products', prod);
-
-  var rsh = getOrCreateSheet_('Rentals', HEADERS_RENTALS);
-  var rentRow = findRowByIdFlexible_(rsh, p.rentalId, ['rentalId', 'id']);
-  if (rentRow < 0) throw new Error('Rental not found');
-
-  var rentals = readRentals_();
-  var rent = null;
-  for (var j = 0; j < rentals.length; j++) {
-    if (String(rentals[j].rentalId) === String(p.rentalId) || String(rentals[j].id) === String(p.rentalId)) {
-      rent = rentals[j];
-      break;
-    }
-  }
-  if (!rent) throw new Error('Rental record not found');
-
-  rent.status = 'closed';
-  var billRaw = p.billAmount !== undefined && p.billAmount !== '' ? p.billAmount : p.finalBill;
-  rent.billAmount = Number(billRaw || 0);
-  rent.extraCharges = Number(p.extraCharges || 0);
-  rent.notes = p.notes || rent.notes || '';
-  rent.returnedAt = p.returnedAt || nowIso_();
-  rent.returnKind = p.returnKind || 'on_time';
-
-  updateRowCanonical_(rsh, rentRow, HEADERS_RENTALS, 'Rentals', rent);
-
-  logActivity_('rental_closed', p.productId, prod.productName, 'Return completed (' + rent.returnKind + ')', {
-    rentalId: p.rentalId,
-    billAmount: rent.billAmount,
-  });
+function isOpenRentalRowStatus_(cell) {
+  var st = nk_(cell);
+  return (
+    st === 'active' ||
+    st === 'open' ||
+    st === 'partialreturned' ||
+    st === 'partial_returned' ||
+    st === 'rented'
+  );
 }
 
-function handleMarkMaintenance_(p) {
-  var psh = getOrCreateSheet_('Products', HEADERS_PRODUCTS);
-  var products = readProducts_();
-  var prod = null;
-  for (var i = 0; i < products.length; i++) {
-    if (String(products[i].id) === String(p.productId)) {
-      prod = products[i];
+function returnProduct_(data) {
+  var productSheet = getSpreadsheet_().getSheetByName(SHEET_PRODUCTS);
+  var rentalSheet = getSpreadsheet_().getSheetByName(SHEET_RENTALS);
+  if (!productSheet || !rentalSheet) throw new Error('Missing Products or Rentals sheet');
+
+  var productId = String(data.productId || '').trim();
+  if (!productId) throw new Error('Missing productId');
+
+  var matchLine = String(data.rentalLineId || data.lineId || data.rentalId || '').trim();
+  var grp = '';
+  var prodFromComposite = '';
+  var sep = matchLine.indexOf('::');
+  if (sep > 0) {
+    grp = matchLine.substring(0, sep).trim();
+    prodFromComposite = matchLine.substring(sep + 2).trim();
+  }
+  var matchPid = prodFromComposite ? prodFromComposite : productId;
+
+  var productRows = productSheet.getDataRange().getValues();
+  for (var i = 1; i < productRows.length; i++) {
+    if (String(productRows[i][0]).trim() === productId) {
+      productSheet.getRange(i + 1, 10).setValue('Available');
+      productSheet.getRange(i + 1, 11).setValue('');
+      productSheet.getRange(i + 1, 12).setValue('');
+      productSheet.getRange(i + 1, 13).setValue(new Date());
       break;
     }
   }
-  if (!prod || prod.status !== 'available') throw new Error('Product not available for maintenance');
 
-  var prodRow = findRowByIdFlexible_(psh, p.productId, ['id']);
-  prod.status = 'maintenance';
-  prod.lastUpdated = nowIso_();
-  updateRowCanonical_(psh, prodRow, HEADERS_PRODUCTS, 'Products', prod);
+  var rentalRows = rentalSheet.getDataRange().getValues();
+  var rentalId = '';
+  var hitRow = -1;
 
-  var mid = Utilities.getUuid();
-  var msh = getOrCreateSheet_('Maintenance', HEADERS_MAINT);
-  var eta =
-    (p.estimatedCompletion !== undefined && String(p.estimatedCompletion).trim() !== ''
-      ? p.estimatedCompletion
-      : null) ||
-    (p.expectedCompletion !== undefined && String(p.expectedCompletion).trim() !== ''
-      ? p.expectedCompletion
-      : null) ||
-    '';
-  appendRowCanonical_(msh, HEADERS_MAINT, 'Maintenance', {
-    maintenanceId: mid,
-    productId: p.productId,
-    productName: prod.productName,
-    givenTo: p.givenTo || '',
-    issue: p.issue || '',
-    startedAt: nowIso_(),
-    expectedCompletion: eta,
-    completedAt: '',
-    cost: '',
-    notes: p.notes || '',
-    status: 'open',
-  });
-  logActivity_('maintenance_started', p.productId, prod.productName, 'Maintenance — ' + (p.issue || ''), {
-    maintenanceId: mid,
-  });
+  for (var j = 1; j < rentalRows.length; j++) {
+    var r0 = String(rentalRows[j][0] == null ? '' : rentalRows[j][0]).trim();
+    var r1 = String(rentalRows[j][1] == null ? '' : rentalRows[j][1]).trim();
+    if (r1 !== matchPid) continue;
+    if (grp && r0 !== grp) continue;
+    if (!isOpenRentalRowStatus_(rentalRows[j][9])) continue;
+    rentalId = r0;
+    hitRow = j + 1;
+    rentalSheet.getRange(hitRow, 8).setValue(new Date());
+    rentalSheet.getRange(hitRow, 9).setValue(data.billAmount || data.finalBill || 0);
+    rentalSheet.getRange(hitRow, 10).setValue('Returned');
+    break;
+  }
+
+  if (hitRow < 0) throw new Error('Rental line not found for return');
+
+  var updatedRows = rentalSheet.getDataRange().getValues();
+  var remainingProducts = 0;
+  for (var u = 1; u < updatedRows.length; u++) {
+    if (String(updatedRows[u][0]).trim() !== rentalId) continue;
+    var ust = nk_(updatedRows[u][9]);
+    if (ust === 'active' || ust === 'open' || ust === 'partialreturned' || ust === 'partial_returned' || ust === 'rented') {
+      remainingProducts++;
+    }
+  }
+
+  var overallStatus = remainingProducts === 0 ? 'Completed' : 'Partial Returned';
+  for (var v = 1; v < updatedRows.length; v++) {
+    if (String(updatedRows[v][0]).trim() !== rentalId) continue;
+    var vst = nk_(updatedRows[v][9]);
+    if (vst !== 'returned' && vst !== 'closed' && vst !== 'completed') {
+      rentalSheet.getRange(v + 1, 10).setValue(overallStatus);
+    }
+  }
+
+  addActivity_(productId, 'rental_closed', 'Product returned');
+
+  var out = dashboardSuccessPayload_();
+  out.rentalId = rentalId;
+  out.remainingProducts = remainingProducts;
+  out.status = overallStatus;
+  out.message = 'Product returned successfully';
+  return jsonResponse(out);
 }
 
-function handleCompleteMaintenance_(p) {
-  var psh = getOrCreateSheet_('Products', HEADERS_PRODUCTS);
-  var products = readProducts_();
-  var prod = null;
-  for (var i = 0; i < products.length; i++) {
-    if (String(products[i].id) === String(p.productId)) {
-      prod = products[i];
+/* =====================================================
+   MAINTENANCE
+===================================================== */
+
+function markMaintenance_(data) {
+  var productSheet = getSpreadsheet_().getSheetByName(SHEET_PRODUCTS);
+  var maintenanceSheet = getSpreadsheet_().getSheetByName(SHEET_MAINTENANCE);
+  if (!productSheet || !maintenanceSheet) throw new Error('Missing sheet');
+
+  var rows = productSheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]).trim() === String(data.productId).trim()) {
+      productSheet.getRange(i + 1, 10).setValue('Maintenance');
+      productSheet.getRange(i + 1, 13).setValue(new Date());
       break;
     }
   }
-  if (!prod) throw new Error('Product not found');
 
-  var prodRow = findRowByIdFlexible_(psh, p.productId, ['id']);
-  prod.status = 'available';
-  prod.lastUpdated = nowIso_();
-  updateRowCanonical_(psh, prodRow, HEADERS_PRODUCTS, 'Products', prod);
+  var issue = data.issue || data.description || '';
+  var given = data.givenTo || data.vendor || '';
+  var eta = data.expectedCompletion || data.estimatedCompletion || '';
 
-  var msh = getOrCreateSheet_('Maintenance', HEADERS_MAINT);
-  var mRow = findRowByIdFlexible_(msh, p.maintenanceId, ['maintenanceId', 'id']);
-  if (mRow < 0) throw new Error('Maintenance not found');
+  maintenanceSheet.appendRow([
+    'MAIN-' + Date.now(),
+    data.productId,
+    given,
+    issue,
+    new Date(),
+    eta,
+    '',
+    '',
+    'Active',
+  ]);
 
-  var maintenance = readMaintenance_();
-  var rec = null;
-  for (var k = 0; k < maintenance.length; k++) {
-    if (String(maintenance[k].maintenanceId) === String(p.maintenanceId) || String(maintenance[k].id) === String(p.maintenanceId)) {
-      rec = maintenance[k];
-      break;
-    }
-  }
-  if (!rec) throw new Error('Maintenance record not found');
+  addActivity_(data.productId, 'maintenance_started', 'Maintenance started');
 
-  rec.status = 'closed';
-  var costRaw =
-    p.repairCost !== undefined && String(p.repairCost).trim() !== ''
-      ? p.repairCost
-      : p.cost !== undefined && String(p.cost).trim() !== ''
-        ? p.cost
-        : '';
-  rec.cost = Number(costRaw !== '' ? costRaw : 0);
-  rec.notes = p.notes || rec.notes || '';
-  rec.completedAt = nowIso_();
-
-  updateRowCanonical_(msh, mRow, HEADERS_MAINT, 'Maintenance', rec);
-
-  logActivity_('maintenance_closed', p.productId, prod.productName, 'Maintenance completed', {
-    maintenanceId: p.maintenanceId,
-    cost: rec.cost,
-  });
+  var out = dashboardSuccessPayload_();
+  out.message = 'Maintenance started';
+  return jsonResponse(out);
 }
 
-function handleResetDemo_() {
-  var pairs = [
-    ['Products', HEADERS_PRODUCTS],
-    ['Rentals', HEADERS_RENTALS],
-    ['Maintenance', HEADERS_MAINT],
-    ['ActivityLogs', HEADERS_ACTIVITY],
-  ];
-  pairs.forEach(function (pair) {
-    var sh = getOrCreateSheet_(pair[0], pair[1]);
-    if (sh.getLastRow() > 1) {
-      sh.deleteRows(2, sh.getLastRow() - 1);
+function completeMaintenance_(data) {
+  var productSheet = getSpreadsheet_().getSheetByName(SHEET_PRODUCTS);
+  var maintenanceSheet = getSpreadsheet_().getSheetByName(SHEET_MAINTENANCE);
+  if (!productSheet || !maintenanceSheet) throw new Error('Missing sheet');
+
+  var rows = productSheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]).trim() === String(data.productId).trim()) {
+      productSheet.getRange(i + 1, 10).setValue('Available');
+      productSheet.getRange(i + 1, 13).setValue(new Date());
+      break;
     }
-  });
+  }
+
+  var maintenanceRows = maintenanceSheet.getDataRange().getValues();
+  for (var j = 1; j < maintenanceRows.length; j++) {
+    if (String(maintenanceRows[j][1]).trim() === String(data.productId).trim() && nk_(maintenanceRows[j][8]) === 'active') {
+      maintenanceSheet.getRange(j + 1, 7).setValue(new Date());
+      maintenanceSheet.getRange(j + 1, 8).setValue(data.cost || data.repairCost || 0);
+      maintenanceSheet.getRange(j + 1, 9).setValue('Completed');
+      break;
+    }
+  }
+
+  addActivity_(data.productId, 'maintenance_closed', 'Maintenance completed');
+
+  var out = dashboardSuccessPayload_();
+  out.message = 'Maintenance completed';
+  return jsonResponse(out);
+}
+
+/* =====================================================
+   ACTIVITY
+===================================================== */
+
+function addActivity_(productId, action, description) {
+  var sheet = getSpreadsheet_().getSheetByName(SHEET_ACTIVITY);
+  if (!sheet) return;
+  sheet.appendRow(['LOG-' + Date.now(), productId, action, description, new Date()]);
 }

@@ -1,6 +1,12 @@
 export type ProductStatus = 'available' | 'rented' | 'maintenance'
 
+/** One sheet row = one physical item; `active` = line still out, `closed` = line returned. */
 export type RentalRecordStatus = 'active' | 'closed'
+
+/** Derived from all lines sharing the same `groupId`. */
+export type RentalGroupStatus = 'active' | 'partial_returned' | 'completed'
+
+export type RentalLineStatus = 'open' | 'returned'
 
 export type MaintenanceRecordStatus = 'open' | 'closed'
 
@@ -9,6 +15,7 @@ export type ReturnKind = 'early' | 'on_time' | 'delayed'
 export type ActivityType =
   | 'product_added'
   | 'rental_started'
+  | 'rental_partial_return'
   | 'rental_closed'
   | 'maintenance_started'
   | 'maintenance_closed'
@@ -31,8 +38,14 @@ export interface Product {
   lastUpdated: string
 }
 
+/**
+ * One row per physical item on a contract.
+ * - `id` — unique line id (return + APIs); maps from sheet `lineId` when present, else legacy `rentalId`.
+ * - `groupId` — contract id shared by all lines in the same checkout (sheet `rentalId` in multi-item mode).
+ */
 export interface Rental {
   id: string
+  groupId: string
   productId: string
   productName: string
   customerName: string
@@ -42,6 +55,9 @@ export interface Rental {
   finalBill: number | null
   extraCharges: number | null
   notes: string
+  /** Row-level: item still out vs returned (mirrors `status` for sheet compat). */
+  lineStatus: RentalLineStatus
+  /** Sheet-facing line status (`active` / `closed`). Kept for filters + backend. */
   status: RentalRecordStatus
   rentedAt: string
   returnedAt: string | null
@@ -95,7 +111,11 @@ export type SheetAction =
   | { action: 'resetDemo' }
 
 export interface RentOutPayload {
-  productId: string
+  /** When omitted, a new group id is generated client- and server-side. */
+  groupId?: string
+  productIds: string[]
+  /** Display names aligned with `productIds` (sent to Apps Script for legacy `productNames.split` backends). */
+  productNames?: string[]
   customerName: string
   phone: string
   expectedReturnDate: string
@@ -104,8 +124,9 @@ export interface RentOutPayload {
 }
 
 export interface ReturnProductPayload {
+  /** Unique rental line id (sheet `lineId`, or legacy row `rentalId`). */
+  rentalLineId: string
   productId: string
-  rentalId: string
   finalBill: number
   extraCharges: number
   notes: string

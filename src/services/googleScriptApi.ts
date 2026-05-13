@@ -13,24 +13,58 @@ import type {
 import { normalizeDashboardPayload } from '../utils/productNormalize'
 
 const REQUEST_TIMEOUT_MS = 45_000
+/** Multi-row rents do several sheet writes; slow spreadsheets can exceed the default fetch timeout. */
+const MUTATION_TIMEOUT_MS = 120_000
 
 const LOG = '[StellarScan/API]'
 
+/** UTF-8 → base64 for `productIdsB64` (Apps Script `Utilities.base64Decode`). */
+function stringToBase64Utf8(s: string): string {
+  const bytes = new TextEncoder().encode(s)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!)
+  return btoa(binary)
+}
+
 /** Apps Script often returns HTTP 200 with `{ success: false, message }` in the body. */
+function appsScriptFailureMessage(o: Record<string, unknown>): string {
+  const candidates = [o.message, o.error, o.detail, (o as { description?: unknown }).description]
+  for (const c of candidates) {
+    if (c != null && String(c).trim() !== '') return String(c).trim()
+  }
+  const errs = (o as { errors?: unknown }).errors
+  if (Array.isArray(errs) && errs.length) return errs.map((x) => String(x)).join('; ')
+  try {
+    const { success: _s, ok: _o, ...rest } = o
+    const keys = Object.keys(rest)
+    if (keys.length) return `Apps Script error: ${JSON.stringify(rest)}`
+  } catch {
+    /* ignore */
+  }
+  return 'Apps Script returned success: false (no message). Redeploy Code.gs and check Executions in Apps Script.'
+}
+
 function assertAppsScriptSuccess(data: unknown): void {
   if (!data || typeof data !== 'object') return
   const o = data as Record<string, unknown>
-  if (o.success === false) {
-    const msg = String(o.message ?? 'Request failed')
+  const failed =
+    o.success === false || o.success === 'false' || o.ok === false || o.ok === 'false'
+  if (failed) {
+    const msg = appsScriptFailureMessage(o)
     console.error(LOG, 'Apps Script returned success:false', { message: msg, raw: data })
     throw new Error(msg)
   }
 }
 
-export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+export async function fetchJson<T>(
+  url: string,
+  init?: RequestInit,
+  options?: { timeoutMs?: number },
+): Promise<T> {
   const method = init?.method ?? 'GET'
+  const timeoutMs = options?.timeoutMs ?? REQUEST_TIMEOUT_MS
   const ctl = new AbortController()
-  const tid = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS)
+  const tid = setTimeout(() => ctl.abort(), timeoutMs)
   try {
     let res: Response
     try {
@@ -72,7 +106,7 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
     return data
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      console.error(LOG, 'Request timed out', { url, method, timeoutMs: REQUEST_TIMEOUT_MS })
+      console.error(LOG, 'Request timed out', { url, method, timeoutMs })
     }
     throw err
   } finally {
@@ -84,16 +118,21 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
 export async function postFormUrlEncoded(
   apiUrl: string,
   fields: Record<string, string | number | undefined | null>,
+  options?: { timeoutMs?: number },
 ): Promise<unknown> {
   const form = new URLSearchParams()
   for (const [key, value] of Object.entries(fields)) {
     if (value === undefined || value === null) continue
     form.append(key, String(value))
   }
-  return fetchJson<unknown>(apiUrl, {
-    method: 'POST',
-    body: form,
-  })
+  return fetchJson<unknown>(
+    apiUrl,
+    {
+      method: 'POST',
+      body: form,
+    },
+    { timeoutMs: options?.timeoutMs },
+  )
 }
 
 function actionUrl(apiUrl: string, action: string): string {
@@ -314,12 +353,22 @@ function extractDashboardFromPostResult(raw: unknown): DashboardPayload | null {
   return null
 }
 
-/** Run mutation POST; if response includes full snapshot, return it; caller may still refetch. */
+/**
+ * Run mutation POST. Puts `action` in the query string so Apps Script always receives it even if
+ * form-body parsing is flaky; body still carries payload fields.
+ */
 export async function postSheetMutation(
   apiUrl: string,
+  actionName: string,
   fields: Record<string, string | number | undefined | null>,
 ): Promise<DashboardPayload | null> {
-  const raw = await postFormUrlEncoded(apiUrl, fields)
+  const url = new URL(apiUrl)
+  url.searchParams.set('action', actionName)
+  const raw = await postFormUrlEncoded(
+    url.toString(),
+    { ...fields, action: actionName },
+    { timeoutMs: MUTATION_TIMEOUT_MS },
+  )
   const d = extractDashboardFromPostResult(raw)
   return d ? normalizeDashboardPayload(d) : null
 }
@@ -333,8 +382,7 @@ export async function executeMutationFromSheetAction(
       return null
     case 'addProduct': {
       const p = action.payload
-      return postSheetMutation(apiUrl, {
-        action: 'addProduct',
+      return postSheetMutation(apiUrl, 'addProduct', {
         productName: p.productName,
         category: p.category,
         brand: p.brand,
@@ -348,9 +396,30 @@ export async function executeMutationFromSheetAction(
     case 'rentOut': {
       const p = action.payload
       const dueIso = p.expectedReturnDate
-      return postSheetMutation(apiUrl, {
-        action: 'rentProduct',
-        productId: p.productId,
+      const ids = Array.isArray(p.productIds) ? p.productIds.filter(Boolean) : []
+      const productIdsJson = JSON.stringify(ids)
+      let productIdsB64 = ''
+      try {
+        productIdsB64 = stringToBase64Utf8(productIdsJson)
+      } catch {
+        /* fall back to productIds / productIdsJson only */
+      }
+      const productIdsField = ids.join(',')
+      const namesArr = Array.isArray(p.productNames) ? p.productNames.map((n) => String(n ?? '').trim()) : []
+      const productNamesCsv =
+        namesArr.length === ids.length
+          ? namesArr.map((n) => n.replace(/,/g, ' ')).join(',')
+          : ''
+      const productNamesJson = namesArr.length === ids.length ? JSON.stringify(namesArr) : ''
+      return postSheetMutation(apiUrl, 'rentProduct', {
+        productIdsB64,
+        productIds: productIdsField,
+        productIdsJson,
+        productNames: productNamesCsv,
+        productNamesJson,
+        rentalGroupId: p.groupId ?? '',
+        groupId: p.groupId ?? '',
+        productId: ids[0] ?? '',
         customerName: p.customerName,
         phone: p.phone,
         /** Rentals sheet column `expectedReturn` */
@@ -362,10 +431,11 @@ export async function executeMutationFromSheetAction(
     }
     case 'returnProduct': {
       const p = action.payload
-      return postSheetMutation(apiUrl, {
-        action: 'returnProduct',
+      return postSheetMutation(apiUrl, 'returnProduct', {
         productId: p.productId,
-        rentalId: p.rentalId,
+        rentalLineId: p.rentalLineId,
+        lineId: p.rentalLineId,
+        rentalId: p.rentalLineId,
         /** Rentals sheet column `billAmount` */
         billAmount: p.finalBill,
         finalBill: p.finalBill,
@@ -378,8 +448,7 @@ export async function executeMutationFromSheetAction(
     case 'sendToMaintenance': {
       const p = action.payload
       const eta = p.estimatedCompletion
-      return postSheetMutation(apiUrl, {
-        action: 'markMaintenance',
+      return postSheetMutation(apiUrl, 'markMaintenance', {
         productId: p.productId,
         givenTo: p.givenTo,
         issue: p.issue,
@@ -392,8 +461,7 @@ export async function executeMutationFromSheetAction(
     case 'completeMaintenance': {
       const p = action.payload
       const cost = p.repairCost
-      return postSheetMutation(apiUrl, {
-        action: 'completeMaintenance',
+      return postSheetMutation(apiUrl, 'completeMaintenance', {
         productId: p.productId,
         maintenanceId: p.maintenanceId,
         repairCost: cost,
@@ -402,6 +470,6 @@ export async function executeMutationFromSheetAction(
       })
     }
     case 'resetDemo':
-      return postSheetMutation(apiUrl, { action: 'resetDemo' })
+      return postSheetMutation(apiUrl, 'resetDemo', {})
   }
 }

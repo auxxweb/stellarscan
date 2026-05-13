@@ -7,9 +7,9 @@ import { Badge } from '../components/ui/Badge'
 import { Skeleton } from '../components/ui/Skeleton'
 import { useAppStore } from '../store/useAppStore'
 import { formatDisplayDate, isReturnDelayed } from '../utils/dates'
-import { statusBadgeClass, statusLabel } from '../utils/statusStyles'
-import type { ProductStatus } from '../types'
+import type { ProductStatus, Rental } from '../types'
 import { cn } from '../utils/cn'
+import { formatGroupedProductSummary, isRentalLineOpen } from '../utils/rentalGrouping'
 
 function StatCard({
   title,
@@ -75,10 +75,23 @@ export function DashboardPage() {
       maintenance,
     }
 
-    const activeRentals = rentals.filter((r) => r.status === 'active')
+    const openLines = rentals.filter((r) => isRentalLineOpen(r))
+    const contractIds = new Set(openLines.map((r) => r.groupId || r.id))
 
-    return { total, available, rented, maintenance, delayedReturns, dist, activeRentals }
+    return { total, available, rented, maintenance, delayedReturns, dist, activeContracts: contractIds.size }
   }, [products, rentals])
+
+  const activeContractGroups = useMemo(() => {
+    const openLines = rentals.filter((r) => isRentalLineOpen(r))
+    const m = new Map<string, { groupId: string; lines: Rental[] }>()
+    for (const line of openLines) {
+      const gid = line.groupId || line.id
+      const cur = m.get(gid)
+      if (cur) cur.lines.push(line)
+      else m.set(gid, { groupId: gid, lines: [line] })
+    }
+    return [...m.values()]
+  }, [rentals])
 
   const maxDist = Math.max(1, stats.dist.available + stats.dist.rented + stats.dist.maintenance)
 
@@ -193,8 +206,10 @@ export function DashboardPage() {
       <GlassCard>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-slate-900">Active rentals</div>
-            <div className="mt-1 text-xs text-slate-600">Same order as your Rentals sheet</div>
+            <div className="text-sm font-semibold text-slate-900">Active contracts</div>
+            <div className="mt-1 text-xs text-slate-600">
+              {stats.activeContracts} open contract{stats.activeContracts === 1 ? '' : 's'} · multi-item aware
+            </div>
           </div>
           <Link to="/rentals" className="text-sm font-semibold text-sky-700 hover:underline">
             View all
@@ -202,33 +217,40 @@ export function DashboardPage() {
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {stats.activeRentals.length === 0 ? (
+          {activeContractGroups.length === 0 ? (
             <div className="text-sm text-slate-600">No active rentals.</div>
           ) : null}
-          {stats.activeRentals.map((r, idx) => {
-            const p = products.find((x) => x.id === r.productId)
+          {activeContractGroups.map(({ groupId, lines }, idx) => {
+            const summary = formatGroupedProductSummary(lines, products)
+            const first = lines[0]!
+            const p = products.find((x) => x.id === first.productId)
             return (
               <motion.div
-                key={r.id}
+                key={groupId}
                 initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
                 className="flex gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3"
               >
-                <img
-                  src={p?.image}
-                  alt=""
-                  className="size-14 rounded-xl object-cover ring-1 ring-slate-200"
-                />
+                {p?.image?.trim() ? (
+                  <img
+                    src={p.image.trim()}
+                    alt=""
+                    className="size-14 shrink-0 rounded-xl object-cover ring-1 ring-slate-200"
+                  />
+                ) : (
+                  <div aria-hidden className="size-14 shrink-0 rounded-xl bg-slate-200 ring-1 ring-slate-200" />
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="truncate font-semibold text-slate-900">{r.productName}</div>
-                    {p ? <Badge className={cn(statusBadgeClass(p.status))}>{statusLabel(p.status)}</Badge> : null}
+                    <div className="text-xs font-mono text-slate-500">{groupId}</div>
+                    {lines.length > 1 ? (
+                      <Badge className="bg-sky-100 text-sky-900 ring-sky-200">{lines.length} items</Badge>
+                    ) : null}
                   </div>
-                  <div className="mt-1 text-xs text-slate-600">{r.customerName}</div>
-                  <div className="mt-2 text-xs text-slate-600">
-                    Due {formatDisplayDate(r.expectedReturnDate)}
-                  </div>
+                  <div className="mt-1 font-semibold leading-snug text-slate-900">{summary}</div>
+                  <div className="mt-1 text-xs text-slate-600">{first.customerName}</div>
+                  <div className="mt-2 text-xs text-slate-600">Due {formatDisplayDate(first.expectedReturnDate)}</div>
                 </div>
               </motion.div>
             )

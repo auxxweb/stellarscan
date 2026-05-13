@@ -9,9 +9,38 @@ import type {
 import { createId } from '../utils/id'
 import { nowIso } from '../utils/dates'
 import { deriveStellarQrCodeFromProductId } from '../utils/qrCode'
+import { normalizeEntityId } from '../utils/scannerResolve'
 
 const STORAGE_KEY = 'stellar-camera-rentals-v2'
 const LEGACY_STORAGE_KEY = 'stellar-camera-rentals-v1'
+
+/** Match rental line for return: line id, composite `groupId::productId`, or legacy group + product. */
+function findRentalLineForReturnLocal(rentals: Rental[], rentalLineId: string, productId: string): Rental | undefined {
+  const lid = String(rentalLineId ?? '').trim()
+  const pid = normalizeEntityId(productId)
+  const byId = rentals.find((x) => normalizeEntityId(x.id) === normalizeEntityId(lid))
+  if (byId) return byId
+  const sep = lid.indexOf('::')
+  if (sep > 0) {
+    const grp = lid.slice(0, sep).trim()
+    const encPid = lid.slice(sep + 2).trim()
+    const byComposite = rentals.find(
+      (x) =>
+        normalizeEntityId(x.groupId) === normalizeEntityId(grp) &&
+        normalizeEntityId(x.productId) === normalizeEntityId(encPid) &&
+        x.lineStatus === 'open' &&
+        x.status === 'active',
+    )
+    if (byComposite) return byComposite
+  }
+  return rentals.find(
+    (x) =>
+      normalizeEntityId(x.groupId) === normalizeEntityId(lid) &&
+      normalizeEntityId(x.productId) === pid &&
+      x.lineStatus === 'open' &&
+      x.status === 'active',
+  )
+}
 
 /** Bundled demo used a known serial — skip migrating that dataset so the app stays sheet-only. */
 function isLikelyBundledSeed(data: DashboardPayload): boolean {
@@ -124,70 +153,120 @@ export function applySheetAction(state: DashboardPayload, action: SheetAction): 
     }
     case 'rentOut': {
       const pl = action.payload
-      const productId = pl.productId
+      const rawIds = Array.isArray(pl.productIds) ? pl.productIds.filter(Boolean) : []
+      const ids: string[] = []
+      const dedupe = new Set<string>()
+      for (const id of rawIds) {
+        if (dedupe.has(id)) continue
+        dedupe.add(id)
+        ids.push(id)
+      }
+      if (ids.length === 0) break
+
       const customerName = pl.customerName
       const phone = pl.phone
       const expectedReturnDate = pl.expectedReturnDate
       const advanceAmt = Number(pl.advanceAmount ?? 0)
       const notesVal = typeof pl.notes === 'string' ? pl.notes : ''
-      const product = next.products.find((x) => x.id === productId)
-      if (!product || product.status !== 'available') break
-      product.status = 'rented'
-      product.currentCustomer = customerName
-      product.phone = phone
-      product.expectedReturnDate = expectedReturnDate
-      product.lastUpdated = nowIso()
-      const rental: Rental = {
-        id: createId(),
-        productId,
-        productName: product.productName,
-        customerName,
-        phone,
-        advanceAmount: Number.isFinite(advanceAmt) ? advanceAmt : 0,
-        expectedReturnDate,
-        finalBill: null,
-        extraCharges: null,
-        notes: notesVal,
-        status: 'active',
-        rentedAt: nowIso(),
-        returnedAt: null,
-        returnKind: null,
+      const groupId = (typeof pl.groupId === 'string' && pl.groupId.trim()) ? pl.groupId.trim() : createId()
+      const advanceTotal = Number.isFinite(advanceAmt) ? advanceAmt : 0
+
+      for (const productId of ids) {
+        const product = next.products.find((x) => normalizeEntityId(x.id) === normalizeEntityId(productId))
+        if (!product || product.status !== 'available') return state
+        const alreadyRented = next.rentals.some(
+          (r) =>
+            normalizeEntityId(r.productId) === normalizeEntityId(productId) &&
+            r.lineStatus === 'open' &&
+            r.status === 'active',
+        )
+        if (alreadyRented) return state
       }
-      next.rentals.push(rental)
+
+      let idx = 0
+      for (const productId of ids) {
+        const product = next.products.find((x) => normalizeEntityId(x.id) === normalizeEntityId(productId))
+        if (!product) continue
+        product.status = 'rented'
+        product.currentCustomer = customerName
+        product.phone = phone
+        product.expectedReturnDate = expectedReturnDate
+        product.lastUpdated = nowIso()
+
+        const lineId = createId()
+        const adv = idx === 0 ? advanceTotal : 0
+        idx += 1
+        const rental: Rental = {
+          id: lineId,
+          groupId,
+          productId,
+          productName: product.productName,
+          customerName,
+          phone,
+          advanceAmount: adv,
+          expectedReturnDate,
+          finalBill: null,
+          extraCharges: null,
+          notes: notesVal,
+          lineStatus: 'open',
+          status: 'active',
+          rentedAt: nowIso(),
+          returnedAt: null,
+          returnKind: null,
+        }
+        next.rentals.push(rental)
+      }
+
+      const firstPid = ids[0]!
+      const firstProduct = next.products.find((x) => x.id === firstPid)
       next.activityLogs.push(
         createActivity({
           type: 'rental_started',
-          productId,
-          productName: product.productName,
-          message: `Rented to ${customerName}`,
-          meta: { rentalId: rental.id },
+          productId: firstPid,
+          productName: firstProduct?.productName ?? '',
+          message:
+            idx > 1
+              ? `Rented ${idx} items to ${customerName} (contract ${groupId})`
+              : `Rented to ${customerName}`,
+          meta: { rentalId: groupId, groupId, productIds: ids, lineCount: idx },
         }),
       )
       break
     }
     case 'returnProduct': {
-      const { productId, rentalId, finalBill, extraCharges, notes, returnedAt, returnKind } = action.payload
-      const product = next.products.find((x) => x.id === productId)
-      const rental = next.rentals.find((x) => x.id === rentalId)
-      if (!product || !rental || rental.status !== 'active') break
+      const { productId, rentalLineId, finalBill, extraCharges, notes, returnedAt, returnKind } = action.payload
+      const product = next.products.find((x) => normalizeEntityId(x.id) === normalizeEntityId(productId))
+      const rental = findRentalLineForReturnLocal(next.rentals, rentalLineId, productId)
+      if (!product || !rental || rental.lineStatus !== 'open' || rental.status !== 'active') break
       product.status = 'available'
       product.currentCustomer = ''
       product.phone = ''
       product.expectedReturnDate = ''
       product.lastUpdated = nowIso()
       rental.status = 'closed'
+      rental.lineStatus = 'returned'
       rental.finalBill = Number(finalBill)
       rental.extraCharges = Number(extraCharges)
       rental.notes = notes || rental.notes
       rental.returnedAt = returnedAt
       rental.returnKind = returnKind
+
+      const groupLines = next.rentals.filter((x) => x.groupId === rental.groupId)
+      const stillOut = groupLines.some((x) => x.lineStatus === 'open' && x.status === 'active')
+
       next.activityLogs.push(
         createActivity({
-          type: 'rental_closed',
+          type: stillOut ? 'rental_partial_return' : 'rental_closed',
           productId,
           productName: product.productName,
-          message: `Return completed (${returnKind.replace('_', ' ')})`,
-          meta: { rentalId, billAmount: Number(finalBill) },
+          message: stillOut
+            ? `Partial return — ${returnKind.replace('_', ' ')} (${product.productName})`
+            : `Return completed (${returnKind.replace('_', ' ')}) — contract settled`,
+          meta: {
+            rentalLineId: rental.id,
+            groupId: rental.groupId,
+            billAmount: Number(finalBill),
+          },
         }),
       )
       break

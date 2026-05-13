@@ -7,6 +7,7 @@ import { statusBadgeClass, statusLabel } from '../../utils/statusStyles'
 import { formatDisplayDate } from '../../utils/dates'
 import { cn } from '../../utils/cn'
 import { deriveStellarQrCodeFromProductId } from '../../utils/qrCode'
+import { productRowReactKey } from '../../utils/listKeys'
 import { formatInr } from '../../utils/money'
 
 export function ProductTable({
@@ -38,11 +39,15 @@ export function ProductTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {products.map((p) => (
-              <tr key={p.id} className="hover:bg-slate-50/80">
+            {products.map((p, idx) => (
+              <tr key={productRowReactKey(p, idx)} className="hover:bg-slate-50/80">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <img src={p.image} alt="" className="size-10 rounded-lg object-cover ring-1 ring-slate-200" />
+                    {p.image?.trim() ? (
+                      <img src={p.image.trim()} alt="" className="size-10 rounded-lg object-cover ring-1 ring-slate-200" />
+                    ) : (
+                      <div aria-hidden className="size-10 rounded-lg bg-slate-200 ring-1 ring-slate-200" />
+                    )}
                     <div>
                       <div className="font-semibold text-slate-900">{p.productName}</div>
                       <div className="text-xs text-slate-600">
