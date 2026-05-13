@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { RefreshCw, ScanLine } from 'lucide-react'
 import { Modal } from '../ui/Modal'
+import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { useAppStore } from '../../store/useAppStore'
@@ -12,7 +13,8 @@ import { pickPreferredQrCamera, sanitizeQrMountDomId } from '../../utils/html5Qr
 import { playScanSuccessSound, vibrateSuccess } from '../../utils/sound'
 import { findProductByScan, normalizeEntityId, resolveProductNameLabel } from '../../utils/scannerResolve'
 import { getOpenContractLinesByGroupId } from '../../utils/rentalGrouping'
-import { formatInr } from '../../utils/money'
+import { formatInr, splitMoneyTotalAcrossCount } from '../../utils/money'
+import { parseNonNegativeMoney } from '../../utils/validation'
 import { cn } from '../../utils/cn'
 
 export function ReturnContractModal({
@@ -36,9 +38,11 @@ export function ReturnContractModal({
   const startingRef = useRef(false)
   const startScannerRef = useRef<() => Promise<void>>(async () => {})
   const groupIdRef = useRef('')
+  const billEditedRef = useRef(false)
 
   const [scannedLineIds, setScannedLineIds] = useState<string[]>([])
   const [billPreviewReturnedAtIso, setBillPreviewReturnedAtIso] = useState('')
+  const [billAmount, setBillAmount] = useState('')
   const [scanMode, setScanMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -75,8 +79,10 @@ export function ReturnContractModal({
   }, [])
 
   const reset = useCallback(() => {
+    billEditedRef.current = false
     setScannedLineIds([])
     setBillPreviewReturnedAtIso('')
+    setBillAmount('')
     setScanMode(false)
     setSubmitting(false)
   }, [])
@@ -110,6 +116,24 @@ export function ReturnContractModal({
     for (const d of billingPreview.details) m.set(d.lineId, d)
     return m
   }, [billingPreview.details])
+
+  const billPreviewParsed = useMemo(() => {
+    const n = Number(billAmount.replace(/,/g, ''))
+    return Number.isFinite(n) && n >= 0 ? n : 0
+  }, [billAmount])
+
+  useEffect(() => {
+    if (!open || billEditedRef.current) return
+    const t = billingPreview.total
+    if (!Number.isFinite(t)) return
+    setBillAmount(String(Math.round(t * 100) / 100))
+  }, [open, billingPreview.total])
+
+  const applyCalculatedTotal = useCallback(() => {
+    billEditedRef.current = false
+    const t = billingPreview.total
+    setBillAmount(Number.isFinite(t) ? String(Math.round(t * 100) / 100) : '')
+  }, [billingPreview.total])
 
   const processScan = useCallback(
     (decodedText: string) => {
@@ -228,8 +252,13 @@ export function ReturnContractModal({
       return
     }
     const returnedAt = nowIso()
-    const { details: billDetails, total: totalBill } = computeContractReturnLineBills(contractLines, products, returnedAt)
-    const billByLineId = new Map(billDetails.map((d) => [d.lineId, d.subtotal]))
+    const billCheck = parseNonNegativeMoney(billAmount, 'Total bill amount')
+    if (!billCheck.ok) {
+      pushToast(billCheck.message, 'error')
+      return
+    }
+    const totalBill = billCheck.value
+    const parts = splitMoneyTotalAcrossCount(totalBill, contractLines.length)
     setSubmitting(true)
     try {
       for (let i = 0; i < contractLines.length; i++) {
@@ -240,7 +269,7 @@ export function ReturnContractModal({
           payload: {
             productId: line.productId,
             rentalLineId: line.id,
-            finalBill: billByLineId.get(line.id) ?? 0,
+            finalBill: parts[i] ?? 0,
             extraCharges: 0,
             notes: '',
             returnedAt,
@@ -391,15 +420,45 @@ export function ReturnContractModal({
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white/90 p-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">Total bill (auto)</div>
-          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
-            <span className="text-2xl font-bold tracking-tight text-slate-900">{formatInr(billingPreview.total)}</span>
-            <span className="text-xs text-slate-500">Shown from open time; completing uses the exact return timestamp.</span>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">Total bill amount</div>
+              <p className="mt-1 text-xs text-slate-500">
+                Prefilled from daily rates × days (see each line). Edit if needed; the amount is split across line items
+                when you complete.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
+              onClick={applyCalculatedTotal}
+            >
+              Reset to auto
+            </button>
           </div>
+          <label className="mt-3 mb-1 block text-xs font-semibold text-slate-600" htmlFor="return-total-bill">
+            Total (₹)
+          </label>
+          <Input
+            id="return-total-bill"
+            inputMode="decimal"
+            className="w-full font-semibold sm:max-w-xs"
+            value={billAmount}
+            onChange={(e) => {
+              billEditedRef.current = true
+              setBillAmount(e.target.value)
+            }}
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Auto total (estimate): <span className="font-semibold text-slate-800">{formatInr(billingPreview.total)}</span>
+            {' · '}
+            {formatInr(splitMoneyTotalAcrossCount(billPreviewParsed, contractLines.length)[0] ?? 0)} per line (approx.)
+            when posted
+          </p>
           {!allScanned ? (
             <p className="mt-2 text-xs text-amber-800">Confirm every unit with a scan before completing.</p>
           ) : (
-            <p className="mt-2 text-xs text-slate-600">Ready to post per-line bills from catalog daily rates.</p>
+            <p className="mt-2 text-xs text-slate-600">All units scanned — ready to post.</p>
           )}
         </div>
       </div>

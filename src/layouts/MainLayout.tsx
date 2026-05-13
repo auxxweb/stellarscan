@@ -111,7 +111,7 @@ export function MainLayout() {
             </div>
           ) : null}
 
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-36 sm:pb-10">
+          <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 py-6 pb-36 sm:pb-10">
             <Outlet />
           </main>
         </div>

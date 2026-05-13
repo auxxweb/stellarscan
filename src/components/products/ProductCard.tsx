@@ -29,8 +29,8 @@ export function ProductCard({
   const imageSrc = product.image?.trim() || null
 
   return (
-    <motion.div layout initial={{ opacity: 1, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
-      <GlassCard className="group relative overflow-hidden p-0">
+    <motion.div layout className="min-w-0" initial={{ opacity: 1, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
+      <GlassCard className="group relative min-w-0 overflow-hidden p-0">
         <div className="relative h-40 w-full overflow-hidden">
           {imageSrc ? (
             <img

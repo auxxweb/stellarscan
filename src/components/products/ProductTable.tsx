@@ -24,9 +24,9 @@ export function ProductTable({
   onMaintenanceComplete: (p: Product) => void
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/80 shadow-sm backdrop-blur">
-      <div className="overflow-x-auto">
-        <table className="min-w-[980px] w-full border-collapse text-left text-sm">
+    <div className="max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white/80 shadow-sm backdrop-blur">
+      <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+        <table className="min-w-[700px] w-full border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
             <tr>
               <th className="px-4 py-3">Product</th>
@@ -49,8 +49,8 @@ export function ProductTable({
                       <div aria-hidden className="size-10 rounded-lg bg-slate-200 ring-1 ring-slate-200" />
                     )}
                     <div>
-                      <div className="font-semibold text-slate-900">{p.productName}</div>
-                      <div className="text-xs text-slate-600">
+                      <div className="break-words font-semibold text-slate-900">{p.productName}</div>
+                      <div className="break-words text-xs text-slate-600">
                         {p.brand} • {p.category}
                       </div>
                     </div>

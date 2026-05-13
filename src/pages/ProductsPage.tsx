@@ -78,16 +78,16 @@ export function ProductsPage() {
   }, [products, query, status, category])
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+    <div className="min-w-0 max-w-full space-y-4">
+      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
           <div className="text-xs font-semibold text-sky-700">Inventory</div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Products</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 break-words text-sm text-slate-600">
             Search, filter, and run rentals. List order matches your Products sheet (top to bottom).
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           <Button type="button" onClick={() => setAddOpen(true)} leftIcon={<Plus className="size-4" />}>
             Add product
           </Button>
@@ -95,17 +95,22 @@ export function ProductsPage() {
       </div>
 
       <GlassCard className="!p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-xl">
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative min-w-0 w-full lg:max-w-xl">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
-            <Input className="!pl-10" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, brand, model, serial, QR…" />
+            <Input
+              className="!pl-10"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name, brand, model, serial, QR…"
+            />
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <Filter className="size-4 text-slate-500" />
+          <div className="flex min-w-0 w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <div className="flex min-w-0 w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
+              <Filter className="hidden size-4 shrink-0 text-slate-500 sm:block" aria-hidden />
               <select
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900"
+                className="min-w-0 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 sm:max-w-[11rem] sm:flex-1"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ProductStatus | 'all')}
               >
@@ -115,7 +120,7 @@ export function ProductsPage() {
                 <option value="maintenance">Maintenance</option>
               </select>
               <select
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900"
+                className="min-w-0 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 sm:max-w-[14rem] sm:flex-1"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
@@ -127,7 +132,7 @@ export function ProductsPage() {
               </select>
             </div>
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex shrink-0 items-center justify-end gap-2">
               <Button
                 type="button"
                 variant={view === 'grid' ? 'primary' : 'secondary'}
@@ -171,7 +176,7 @@ export function ProductsPage() {
           </div>
         </GlassCard>
       ) : view === 'grid' ? (
-        <motion.div layout className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <motion.div layout className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((p, idx) => (
             <ProductCard
               key={productRowReactKey(p, idx)}

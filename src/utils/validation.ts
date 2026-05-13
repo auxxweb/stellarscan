@@ -17,6 +17,25 @@ export function parsePositiveMoney(
   return { ok: true, value: n }
 }
 
+/** Money fields: required, finite, zero or positive (e.g. total bill with waiver). */
+export function parseNonNegativeMoney(
+  raw: string,
+  fieldLabel: string,
+): { ok: true; value: number } | { ok: false; message: string } {
+  const t = raw.trim()
+  if (t === '') {
+    return { ok: false, message: `${fieldLabel} is required.` }
+  }
+  const n = Number(t.replace(/,/g, ''))
+  if (!Number.isFinite(n)) {
+    return { ok: false, message: `${fieldLabel} must be a valid number.` }
+  }
+  if (n < 0) {
+    return { ok: false, message: `${fieldLabel} cannot be negative.` }
+  }
+  return { ok: true, value: n }
+}
+
 /** Apps Script web app URL shape (approximate). */
 export function isValidAppsScriptExecUrl(url: string): boolean {
   const u = url.trim()
