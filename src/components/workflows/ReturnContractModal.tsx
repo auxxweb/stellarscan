@@ -2,18 +2,17 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { RefreshCw, ScanLine } from 'lucide-react'
 import { Modal } from '../ui/Modal'
-import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { useAppStore } from '../../store/useAppStore'
 import { useToastStore } from '../../store/useToastStore'
 import { computeReturnKind, nowIso } from '../../utils/dates'
+import { computeContractReturnLineBills, type LineReturnBillDetail } from '../../utils/rentalBilling'
 import { pickPreferredQrCamera, sanitizeQrMountDomId } from '../../utils/html5QrMount'
 import { playScanSuccessSound, vibrateSuccess } from '../../utils/sound'
 import { findProductByScan, normalizeEntityId, resolveProductNameLabel } from '../../utils/scannerResolve'
 import { getOpenContractLinesByGroupId } from '../../utils/rentalGrouping'
-import { parsePositiveMoney } from '../../utils/validation'
-import { formatInr, splitMoneyTotalAcrossCount } from '../../utils/money'
+import { formatInr } from '../../utils/money'
 import { cn } from '../../utils/cn'
 
 export function ReturnContractModal({
@@ -39,7 +38,7 @@ export function ReturnContractModal({
   const groupIdRef = useRef('')
 
   const [scannedLineIds, setScannedLineIds] = useState<string[]>([])
-  const [billAmount, setBillAmount] = useState('')
+  const [billPreviewReturnedAtIso, setBillPreviewReturnedAtIso] = useState('')
   const [scanMode, setScanMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -77,7 +76,7 @@ export function ReturnContractModal({
 
   const reset = useCallback(() => {
     setScannedLineIds([])
-    setBillAmount('')
+    setBillPreviewReturnedAtIso('')
     setScanMode(false)
     setSubmitting(false)
   }, [])
@@ -85,6 +84,7 @@ export function ReturnContractModal({
   useEffect(() => {
     if (!open) return
     reset()
+    setBillPreviewReturnedAtIso(nowIso())
   }, [open, groupId, reset])
 
   useEffect(() => {
@@ -97,6 +97,19 @@ export function ReturnContractModal({
 
   const scannedSet = useMemo(() => new Set(scannedLineIds), [scannedLineIds])
   const allScanned = contractLines.length > 0 && scannedLineIds.length === contractLines.length
+
+  const billingPreview = useMemo(() => {
+    if (!billPreviewReturnedAtIso || contractLines.length === 0) {
+      return { details: [] as LineReturnBillDetail[], total: 0 }
+    }
+    return computeContractReturnLineBills(contractLines, products, billPreviewReturnedAtIso)
+  }, [billPreviewReturnedAtIso, contractLines, products])
+
+  const billDetailByLineId = useMemo(() => {
+    const m = new Map<string, LineReturnBillDetail>()
+    for (const d of billingPreview.details) m.set(d.lineId, d)
+    return m
+  }, [billingPreview.details])
 
   const processScan = useCallback(
     (decodedText: string) => {
@@ -114,14 +127,16 @@ export function ReturnContractModal({
         pushToast('This unit is not on this contract (or already returned).', 'error')
         return
       }
-      vibrateSuccess()
-      playScanSuccessSound()
       setScannedLineIds((prev) => {
         if (prev.includes(line.id)) {
-          window.setTimeout(() => pushToast(`${p.productName} — scan cleared (not counted).`, 'info'), 0)
-          return prev.filter((id) => id !== line.id)
+          window.setTimeout(() => pushToast(`${p.productName} is already scanned — no need to scan again.`, 'info'), 0)
+          return prev
         }
-        window.setTimeout(() => pushToast(`${p.productName} scanned for return.`, 'success'), 0)
+        window.setTimeout(() => {
+          vibrateSuccess()
+          playScanSuccessSound()
+          pushToast(`${p.productName} scanned for return.`, 'success')
+        }, 0)
         return [...prev, line.id]
       })
     },
@@ -212,14 +227,9 @@ export function ReturnContractModal({
       pushToast(`Scan every unit on this contract (${scannedLineIds.length}/${contractLines.length} scanned).`, 'error')
       return
     }
-    const billCheck = parsePositiveMoney(billAmount, 'Total bill amount')
-    if (!billCheck.ok) {
-      pushToast(billCheck.message, 'error')
-      return
-    }
-    const totalBill = billCheck.value
     const returnedAt = nowIso()
-    const parts = splitMoneyTotalAcrossCount(totalBill, contractLines.length)
+    const { details: billDetails, total: totalBill } = computeContractReturnLineBills(contractLines, products, returnedAt)
+    const billByLineId = new Map(billDetails.map((d) => [d.lineId, d.subtotal]))
     setSubmitting(true)
     try {
       for (let i = 0; i < contractLines.length; i++) {
@@ -230,7 +240,7 @@ export function ReturnContractModal({
           payload: {
             productId: line.productId,
             rentalLineId: line.id,
-            finalBill: parts[i] ?? 0,
+            finalBill: billByLineId.get(line.id) ?? 0,
             extraCharges: 0,
             notes: '',
             returnedAt,
@@ -301,13 +311,14 @@ export function ReturnContractModal({
             </Badge>
           </div>
           <p className="mt-2 text-sm text-slate-600">
-            Scan each physical QR to confirm return. Scan again to undo that unit. Enter one <strong>total bill</strong>{' '}
-            for the whole contract; it is split across line items when you complete.
+            Scan each physical QR once to confirm return (duplicate scans are ignored). The bill is calculated from each
+            product&apos;s daily rate and calendar days out (checkout through return).
           </p>
           <ul className="mt-3 space-y-2">
             {contractLines.map((line) => {
               const ok = scannedSet.has(line.id)
               const label = resolveProductNameLabel(line.productId, line.productName, products)
+              const bd = billDetailByLineId.get(line.id)
               return (
                 <li
                   key={line.id}
@@ -319,6 +330,14 @@ export function ReturnContractModal({
                   <div className="min-w-0">
                     <div className="font-semibold text-slate-900">{label}</div>
                     <div className="font-mono text-[11px] text-slate-500">{line.productId}</div>
+                    {bd ? (
+                      <div className="mt-1 text-[11px] text-slate-600">
+                        {bd.days} day{bd.days === 1 ? '' : 's'} × {formatInr(bd.ratePerDay)}/day → {formatInr(bd.subtotal)}
+                        {bd.ratePerDay === 0 ? (
+                          <span className="ml-1 font-semibold text-amber-800"> (no price on file)</span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   <Badge className={ok ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}>
                     {ok ? 'Scanned' : 'Awaiting scan'}
@@ -371,16 +390,16 @@ export function ReturnContractModal({
           </div>
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-600">Total bill amount (whole contract)</label>
-          <Input inputMode="decimal" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
+        <div className="rounded-2xl border border-slate-200 bg-white/90 p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">Total bill (auto)</div>
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-2xl font-bold tracking-tight text-slate-900">{formatInr(billingPreview.total)}</span>
+            <span className="text-xs text-slate-500">Shown from open time; completing uses the exact return timestamp.</span>
+          </div>
           {!allScanned ? (
-            <p className="mt-1 text-xs text-amber-800">Confirm every unit with a scan before completing.</p>
+            <p className="mt-2 text-xs text-amber-800">Confirm every unit with a scan before completing.</p>
           ) : (
-            <p className="mt-1 text-xs text-slate-600">
-              {formatInr(splitMoneyTotalAcrossCount(Number(billAmount) || 0, contractLines.length)[0] ?? 0)} per line
-              (approx.) — exact split uses paise rounding.
-            </p>
+            <p className="mt-2 text-xs text-slate-600">Ready to post per-line bills from catalog daily rates.</p>
           )}
         </div>
       </div>

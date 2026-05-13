@@ -12,7 +12,6 @@ import { isoFromDateOnlyInput } from '../../utils/dates'
 import { pickPreferredQrCamera, sanitizeQrMountDomId } from '../../utils/html5QrMount'
 import { playScanSuccessSound, vibrateSuccess } from '../../utils/sound'
 import { findActiveRentalForProduct, findProductByScan, normalizeEntityId } from '../../utils/scannerResolve'
-import { productRowReactKey } from '../../utils/listKeys'
 
 function cartGroupedSummary(cart: Product[]): { key: string; label: string; count: number; ids: string[] }[] {
   const m = new Map<string, { label: string; count: number; ids: string[] }>()
@@ -38,8 +37,6 @@ export function RentOutModal({
   initialProducts: Product[]
   onClose: () => void
 }) {
-  const products = useAppStore((s) => s.products)
-  const rentals = useAppStore((s) => s.rentals)
   const runAction = useAppStore((s) => s.runAction)
   const loading = useAppStore((s) => s.loading)
   const pushToast = useToastStore((s) => s.push)
@@ -67,7 +64,7 @@ export function RentOutModal({
     setExpectedReturnDate(d.toISOString().slice(0, 10))
     const seed = initialProducts.filter(Boolean)
     setCart(seed)
-    setScanMode(false)
+    setScanMode(true)
   }, [open, initialProducts])
 
   const reset = () => {
@@ -223,35 +220,6 @@ export function RentOutModal({
     }
   }, [open, scanMode, startScanner, stopScanner])
 
-  const addCandidates = useMemo(() => {
-    const inCart = new Set(cart.map((c) => normalizeEntityId(c.id)))
-    return products.filter((p) => {
-      if (p.status !== 'available') return false
-      if (inCart.has(normalizeEntityId(p.id))) return false
-      if (findActiveRentalForProduct(rentals, p.id)) return false
-      return true
-    })
-  }, [products, rentals, cart])
-
-  const addById = (rawId: string) => {
-    const id = rawId.trim()
-    if (!id) return
-    const p = products.find((x) => normalizeEntityId(x.id) === normalizeEntityId(id))
-    if (!p || p.status !== 'available') {
-      pushToast('That product is not available.', 'error')
-      return
-    }
-    if (findActiveRentalForProduct(rentals, p.id)) {
-      pushToast(`${p.productName} is already on rent.`, 'error')
-      return
-    }
-    if (cart.some((c) => normalizeEntityId(c.id) === normalizeEntityId(p.id))) {
-      pushToast('Already in cart.', 'info')
-      return
-    }
-    setCart((prev) => [...prev, p])
-  }
-
   const removeFromCart = (productId: string) => {
     setCart((prev) => prev.filter((p) => normalizeEntityId(p.id) !== normalizeEntityId(productId)))
   }
@@ -298,7 +266,7 @@ export function RentOutModal({
     <Modal
       open={open}
       title="Rent out"
-      description="Build a cart — each QR / product id is one physical unit."
+      description="Scan each unit’s QR to build the cart — scan again to remove. One QR is one physical item."
       onClose={() => {
         void stopScanner()
         reset()
@@ -332,7 +300,7 @@ export function RentOutModal({
           </div>
           {cart.length === 0 ? (
             <p className="mt-2 text-sm text-slate-600">
-              Add products from the list or scanner. Duplicates in the cart are blocked; scan again to remove a unit.
+              Use the scanner below to add available units. Scan the same code again to remove a unit from the cart.
             </p>
           ) : (
             <ul className="mt-3 space-y-2">
@@ -369,27 +337,7 @@ export function RentOutModal({
           )}
 
           <div className="mt-4 space-y-3 border-t border-slate-200/80 pt-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">Add or remove equipment</div>
-
-            <div>
-              <label className="mb-1 block text-[11px] font-semibold text-slate-600">From list</label>
-              <select
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900"
-                value=""
-                onChange={(e) => {
-                  const v = e.target.value
-                  e.target.value = ''
-                  if (v) addById(v)
-                }}
-              >
-                <option value="">Choose available item to add…</option>
-                {addCandidates.map((p, idx) => (
-                  <option key={productRowReactKey(p, idx)} value={p.id}>
-                    {p.productName} · {p.id}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">Scanner</div>
 
             <div className="rounded-xl border border-slate-200 bg-white/90 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -403,7 +351,7 @@ export function RentOutModal({
                   className="!shrink-0 !py-2 !text-xs"
                   onClick={() => setScanMode((v) => !v)}
                 >
-                  {scanMode ? 'Stop scanning' : 'Scan add / remove'}
+                  {scanMode ? 'Stop scanning' : 'Start scanning'}
                 </Button>
               </div>
               {scanMode ? (
@@ -433,10 +381,7 @@ export function RentOutModal({
                   </Button>
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-slate-600">
-                  Use the camera to add units by QR or remove them by scanning again. The list above is another way to
-                  add items.
-                </p>
+                <p className="mt-2 text-xs text-slate-600">Turn scanning on to add or remove units by QR.</p>
               )}
             </div>
           </div>

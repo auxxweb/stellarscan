@@ -48,3 +48,18 @@ export function isReturnDelayed(expectedReturnIso: string): boolean {
   const expected = new Date(expectedReturnIso).getTime()
   return Date.now() > expected
 }
+
+/**
+ * Whole calendar days from checkout through return, inclusive (uses date parts only).
+ * Minimum 1 day. Aligns with per-day rentalPrice on products.
+ */
+export function inclusiveBillableDays(startIso: string, endIso: string): number {
+  const startHead = startIso.trim().slice(0, 10)
+  const endHead = endIso.trim().slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startHead) || !/^\d{4}-\d{2}-\d{2}$/.test(endHead)) return 1
+  const startMs = Date.parse(`${startHead}T12:00:00.000Z`)
+  const endMs = Date.parse(`${endHead}T12:00:00.000Z`)
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return 1
+  const diffDays = Math.round((endMs - startMs) / (24 * 60 * 60 * 1000))
+  return Math.max(1, diffDays + 1)
+}

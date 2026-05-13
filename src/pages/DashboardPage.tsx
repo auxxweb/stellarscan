@@ -111,7 +111,7 @@ export function DashboardPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-xs font-semibold text-sky-700">Overview</div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Fleet health</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
             Live inventory, rental momentum, and operational signals — tuned for fast counter workflows.
           </p>
