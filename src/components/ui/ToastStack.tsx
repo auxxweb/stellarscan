@@ -6,15 +6,17 @@ export function ToastStack() {
   const toasts = useToastStore((s) => s.toasts)
   const dismiss = useToastStore((s) => s.dismiss)
 
+  const ordered = [...toasts].reverse()
+
   return (
-    <div className="pointer-events-none fixed bottom-20 left-0 right-0 z-[90] flex flex-col items-center gap-2 px-3 sm:bottom-6">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[90] flex flex-col items-center gap-2 px-3 pt-[calc(env(safe-area-inset-top,0px)+4.25rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+4.5rem)]">
       <AnimatePresence>
-        {toasts.map((t) => (
+        {ordered.map((t) => (
           <motion.div
             key={t.id}
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            initial={{ opacity: 0, y: -12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
             className="pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur"
           >
             <div className="mt-0.5">
