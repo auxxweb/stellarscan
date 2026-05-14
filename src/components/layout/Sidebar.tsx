@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, Link } from 'react-router-dom'
 import {
   Activity as ActivityIcon,
   Camera,
@@ -16,6 +16,7 @@ import { cn } from '../../utils/cn'
 import { useAppStore } from '../../store/useAppStore'
 import { useAuthStore } from '../../store/useAuthStore'
 import { Button } from '../ui/Button'
+import { StellerBrandLogo } from '../branding/StellerBrandLogo'
 
 const items = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -47,11 +48,10 @@ export function Sidebar({ mobile }: { mobile?: boolean }) {
         mobile ? 'w-[min(88vw,320px)]' : 'w-72',
       )}
     >
-      <div className="flex items-center justify-between gap-2 px-4 py-4">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-slate-900">Stellar Camera Rentals</div>
-          <div className="truncate text-xs text-slate-600">Operations console</div>
-        </div>
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-4 py-4">
+        <Link to="/" className="min-w-0 flex-1 overflow-hidden" onClick={() => { if (mobile) setSidebarOpen(false) }}>
+          <StellerBrandLogo variant="sidebar" />
+        </Link>
         {mobile ? (
           <Button type="button" variant="ghost" className="!p-2" onClick={() => setSidebarOpen(false)} aria-label="Close menu">
             <X className="size-5" />

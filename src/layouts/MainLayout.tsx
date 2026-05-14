@@ -70,16 +70,14 @@ export function MainLayout() {
                 <Button type="button" variant="secondary" className="!p-2 lg:hidden" onClick={() => toggleSidebar()} aria-label="Open menu">
                   <Menu className="size-5" />
                 </Button>
-                <div className="hidden min-w-0 sm:block">
-                  <div className="text-xs font-semibold text-slate-600">Stellar Camera Rentals</div>
-                  <div className="text-sm font-bold text-slate-900">Command center</div>
-                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                <span className="truncate text-base font-bold tracking-tight text-sky-800 sm:hidden">Stellar</span>
+              <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+                <div className="min-w-0 max-w-[min(58vw,220px)] text-right leading-tight sm:max-w-md">
+                  <div className="truncate text-[11px] font-semibold text-slate-600 sm:text-sm">Stellar Camera Rentals</div>
+                </div>
                 <Link
                   to="/scanner"
-                  className="hidden rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 sm:inline-flex"
+                  className="hidden shrink-0 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 sm:inline-flex"
                 >
                   Open scanner
                 </Link>

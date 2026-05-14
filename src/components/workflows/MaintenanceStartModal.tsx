@@ -23,7 +23,7 @@ export function MaintenanceStartModal({
   const loading = useAppStore((s) => s.loading)
   const pushToast = useToastStore((s) => s.push)
 
-  const [givenTo, setGivenTo] = useState('Stellar Service Desk')
+  const [givenTo, setGivenTo] = useState('STELLER Service Desk')
   const [estimatedCompletion, setEstimatedCompletion] = useState('')
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export function MaintenanceStartModal({
   }, [open])
 
   const reset = () => {
-    setGivenTo('Stellar Service Desk')
+    setGivenTo('STELLER Service Desk')
   }
 
   const submit = async () => {

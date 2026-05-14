@@ -12,6 +12,8 @@ import {
 import { useAppStore } from '../store/useAppStore'
 import { useToastStore } from '../store/useToastStore'
 import { isValidAppsScriptExecUrl } from '../utils/validation'
+import { StellerBrandLogo } from '../components/branding/StellerBrandLogo'
+import { APP_BRAND_NAME, APP_TAGLINE } from '../branding/paths'
 
 export function SettingsPage() {
   const replaceAll = useAppStore((s) => s.replaceAll)
@@ -101,11 +103,14 @@ export function SettingsPage() {
 
       <GlassCard>
         <div className="text-sm font-semibold text-slate-900">App info</div>
-        <div className="mt-3 space-y-2 text-sm text-slate-700">
+        <div className="mt-3 flex flex-col gap-3 text-sm text-slate-700 sm:flex-row sm:items-center">
+          <StellerBrandLogo variant="footer" />
           <div>
-            <span className="font-semibold">Stellar Camera Rentals</span> — v1.0.0
+            <div className="font-semibold text-slate-900">
+              {APP_BRAND_NAME} — {APP_TAGLINE}
+            </div>
+            <div className="text-slate-600">v1.0.0 · Installable PWA · QR-first workflows · Sheet-ready architecture</div>
           </div>
-          <div className="text-slate-600">Installable PWA • QR-first workflows • Sheet-ready architecture</div>
         </div>
       </GlassCard>
 

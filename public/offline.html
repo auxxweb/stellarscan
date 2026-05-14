@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f1f5f9" />
-    <title>Offline — Stellar Camera Rentals</title>
+    <meta name="theme-color" content="#171717" />
+    <link rel="icon" type="image/png" href="/steller-logo.png" />
+    <title>Offline — STELLER</title>
     <style>
       * {
         box-sizing: border-box;
@@ -44,15 +45,12 @@
         line-height: 1.55;
         font-size: 0.95rem;
       }
-      .icon {
-        width: 56px;
-        height: 56px;
+      .brand {
+        display: block;
+        width: min(100%, 220px);
+        height: auto;
         margin: 0 auto 1.25rem;
-        border-radius: 1rem;
-        background: linear-gradient(135deg, #0ea5e9, #6366f1);
-        display: grid;
-        place-items: center;
-        font-size: 1.5rem;
+        object-fit: contain;
       }
       a {
         color: #0369a1;
@@ -62,9 +60,9 @@
   </head>
   <body>
     <div class="card">
-      <div class="icon" aria-hidden="true">📡</div>
+      <img class="brand" src="/steller-logo.png" width="220" height="72" alt="STELLER" />
       <h1>You are offline</h1>
-      <p>Stellar Camera Rentals needs a connection to sync with your sheet. Reconnect and try again.</p>
+      <p>STELLER needs a connection to sync with your sheet. Reconnect and try again.</p>
       <p style="margin-top: 1.25rem">
         <a href="/">Open app</a>
       </p>

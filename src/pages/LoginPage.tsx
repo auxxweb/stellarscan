@@ -4,6 +4,7 @@ import { LogIn } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
+import { StellerBrandLogo } from '../components/branding/StellerBrandLogo'
 import { useAuthStore } from '../store/useAuthStore'
 
 export function LoginPage() {
@@ -40,10 +41,11 @@ export function LoginPage() {
 
       <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-10 sm:px-6">
         <div className="w-full max-w-[420px]">
-          <div className="mb-8 text-center sm:mb-10">
-            <div className="text-xs font-semibold uppercase tracking-wide text-sky-700">Stellar Camera Rentals</div>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Sign in</h1>
-            <p className="mt-2 text-sm text-slate-600">Enter your credentials to open the operations console.</p>
+          <div className="mb-8 flex flex-col items-center sm:mb-10">
+            <StellerBrandLogo variant="auth" />
+            <p className="mt-4 text-center text-base font-semibold tracking-tight text-slate-800 sm:text-lg">Steller Rentals</p>
+            <h1 className="mt-6 text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Sign in</h1>
+            <p className="mt-2 text-center text-sm text-slate-600">Enter your credentials to open the operations console.</p>
           </div>
 
           <GlassCard className="!p-6 sm:!p-8">
